@@ -2,35 +2,104 @@
 ## Environment setup
 哇裝環境真的好可怕啊啊啊啊，我不會弄環境 我不會docker，好可怕啊啊啊，嗚嗚嗚Ethon 救我QQ
 
+### Implementation plan
+- APP 前端：React Native
+- 前後端連結：axios
+- 後端：fastAPI
+- 資料庫：postgreSQL
+- ~~網頁前端：React~~
+
+#### 觀念釐清
+
+我們之前說要用React 做APP，應該指的是**React Native**，React 做出來的話會是一個"web APP"，是寫HTML、用電腦瀏覽器打開的網頁；React Native 跟React 很像，但是他可以寫跨平台手機 App（iOS & Android），可以用手機APP 打開，像是一個真正的APP 而不是網頁。
+
+
 ### Pre-request
 #### 1. 安裝docker desktop
 
-Docker 是今日相當常見的程式部署方案，可輕易的在不同電腦中建立相同的操作環境，並獲得相較虛擬機器更佳的執行效能。
+專業版：Docker 是今日相當常見的程式部署方案，可輕易的在不同電腦中建立相同的操作環境，避免環境不同造成實作上的困擾，並獲得相較虛擬機器更佳的執行效能。
 
-Windows: [Install Docker Desktop on Windows](./Install%20docker%20-%20wins.md)
+白話版：這次用到的 backend(fastAPI) & PostgreSQL 是裝在docker 裡面的
+
+Windows:
+
+[Install Docker Desktop on Windows](./Install%20docker%20-%20wins.md)
 
 Mac:  
 [Install Docker Desktop on Mac (官方英文文件)](https://docs.docker.com/desktop/setup/install/mac-install/)
+
 [Install Docker Desktop on Mac (中文)](https://dockerdocs.tw/desktop/setup/install/mac-install/)
 
 > Windows 的是我從其他課的講義複製過來的，照著做應該就能裝起來了。Mac 的是官方文件，但應該也算清楚，我之前在Mac 裝印象中滿好裝的，比Windows 簡單多了，應該也不會太難。
 
 #### 2. 安裝node.js
-因為一開始建立環境有要用到npm install，所以還是要在本機裝node.js (對我不知道為什麼他不能放到docker 裡面，隨便)
+之後要用到npm install
 
 [NodeJS、npm 的安裝與配置](https://hackmd.io/@kenny88881234/Hyz69OXJB)
 
 > 我只是隨便網路找了一篇，我沒有照著這篇裝過，但node.js 也滿好裝的，只是單純下載 + 設定環境變數，網路也有很多很多教學可以參考～
 
 
-### Docker
+### React Native + FastAPI + postgreSQL
 好欸終於進入正題
-#### 0. 下載專案
+#### 1. 下載專案
+從我的[github](https://github.com/chia-yuu/HCI-final-project?tab=readme-ov-file) 下載檔案。
+
 ```bash
-git clone
+git clone https://github.com/chia-yuu/HCI-final-project.git
 ```
 
-#### 1. 初始化React 專案 (我已經弄好了，不用做)
+檔案大致架構如下：
+```
+HCI-final-project/
+│
+├── backend/                # FastAPI backend
+│   ├── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
+│
+├── mobile/                 # Expo React Native app
+│   ├── api/
+|   |   └── api.js          # need to modify：要改成你自己的電腦 IP！！！
+│   ├── app/                # App 相關的檔案
+│   ├── package.json
+│   ├── app.json
+│   └── ...
+│
+├── docker-compose.yml
+└── README.md
+```
+
+#### 2. 設定IP
+為了讓電腦和手機能順利連線，要確定你的**電腦和手機連的是同一個網路**！
+
+在mobile/ 底下自己新增一個檔案`.env`，放入你的IP：
+```
+API_URL=http://YOUR_IP:8000
+```
+例如：
+```
+API_URL=http://192.168.123.456:8000
+```
+
+這個`.env` 有被加入`.gitignore`，所以不會上傳到github，你的IP 是安全的
+
+> 怎麼看IP  
+> Windows: `ipconfig`  
+> Mac: `ifconfig`
+>
+> Windows 的範例輸出
+> ```
+> 無線區域網路介面卡 Wi-Fi:     <--- 注意名字，是要找Wi-Fi 不是乙太網路
+>
+>  連線特定 DNS 尾碼 . . . . . . . . :
+>  連結-本機 IPv6 位址 . . . . . . . : xxxx::xxxx:xxxx:xxxx:xxxxxxx
+>  IPv4 位址 . . . . . . . . . . . . : 192.168.xxx.xxx      <--- IPv4 就是我們要的IP address
+>  子網路遮罩 . . . . . . . . . . . .: 255.xxx.xxx.xxx
+>  預設閘道 . . . . . . . . . . . . .: 192.xxx.xxx.xxx
+> ```
+
+<!-- #### 1. 初始化React 專案 (我已經弄好了，不用做)
 ```bash
 cd frontend
 npx create-react-app .
@@ -39,36 +108,64 @@ npx create-react-app .
 
 這個是要建立`frontend/` 那些資料夾架構、package.json 那些用的。
 
-#### 2. 安裝axios (從這裡開始！)
+這個是網頁前端的，這次project 不需要-->
+
+<!-- #### 3. 安裝frontend 所需套件
 ```bash
-cd frontend
-npm install axios
+cd HCI-final-project\mobile
+npm install
+``` -->
+
+#### 3. 安裝前端所需套件(Expo Go)
+在手機上可以打開我們寫的APP。
+
+**在電腦**
+```bash
+cd HCI-final-project
+npm install -g expo-cli
+# npx create-expo-app mobile    # 建立app frontend 的資料夾 (這個我已經做完了，你們不用做)
+
+cd mobile
+npm install                     # 你們要做的是這個，安裝所需dependency
+npm start                       # 開始執行app，terminal 會出現一個QR code
 ```
 
-#### 3. 啟動Docker
+**在手機**
+
+Google Play / App Store 下載Expo Go App，打開APP 用scan QR code 掃剛才電腦terminal 出現的QR code，就可以看到我們寫的APP 了！
+
+> 因為docker 還沒開始跑(還沒有server)，所以現在看到的畫面只有單純前端UI，沒有任何功能，也不能連結資料庫，所以如果這時候看到terminal 有報錯說`LOG  GET /items error: [AxiosError: Network Error]` 這是正常的！因為他找不到資料庫、抓不到資料。
+
+
+#### 4. 啟動Docker
+打開docker desktop，然後在自己電腦的終端機輸入下列指令：
 ```bash
-cd HCI
+cd HCI-final-project
 docker compose up --build
 ```
-第一次跑因為要安裝React、FastAPI、PostgreSQL，可能要等一下下。
+第一次跑因為要安裝FastAPI、PostgreSQL 等東西，可能要等一下下。
 
-會看到`focus_frontend`, `focus_backend`, `focus_db` 各自的log (很長很長)，這三個就是這次project 用到的三個服務。
+等他跑完，你的手機APP 應該可以看到Items from Database 的畫面，中間列表就是現在資料庫有的東西，下面輸入框可以新增東西。能新增東西(沒有出現`LOG GET /items error: [AxiosError: Network Error]` 之類的**GET** 相關error) 就表示資料可以傳進資料庫，能在列表中看到Item (沒有出現`LOG POST /items error: [AxiosError: Network Error]` 之類的**POST** 相關error) 就表示前端可以順利從後端拿到資料。
+
+手機畫面正常顯示就完成了！恭喜你～～
+
+<!-- 會看到`focus_backend` & `focus_db` 各自的log (很長很長)，這兩個就是這次project 用到的服務。 -->
 
 
-### 測試有沒有裝成功 (可略過)
+<!-- #### 測試有沒有裝成功 (可略過)
 
 在瀏覽器輸入下列網址，有出現畫面或文字就表示對應的服務有成功裝好跑起來
 |          網址          |                              預期結果                              | 為什麼會有這個畫面 |
 | ---------------------- | ----------------------------------------------------------------- | --- |
-| http://localhost:8000/ | 醜醜JSON：{"message":"Backend is running!"} | `backend/main.py` 寫的，表示FastAPI 後端正常運作 |
-| http://localhost:8000/db-test | 醜醜JSON：{"db":"connected","result":[{"?column?":1}]} | `backend/main.py` 寫的，表示FastAPI 能連上PostgreSQL |
-| http://localhost:8000/docs | FastAPI 的官方生成的API 文件頁面，會顯示目前所有endpoint(`GET /root`, `GET /db-test`, `GET /items`, `POST /items`) | `backend/main.py` 寫的，每一個`@app.get` / `@app.post` 就是建立一個endpoint，可以用`http://localhost:8000/XXX` 連到 |
-| http://localhost:3000/ | 簡單的HTML，有一個框框可以新增item，新增後會在下面出現你新增的東西 | React 前端透過 Axios 呼叫後端 API，新增的 item 會存到 PostgreSQL 資料庫，列表從資料庫讀取資料 |
+| http://localhost:8000/ | 醜醜JSON：`{"message":"Backend is running!"}` | `backend/main.py` 寫的，表示FastAPI 後端正常運作 |
+| http://localhost:8000/db-test | 醜醜JSON：`{"db":"connected","result":[{"?column?":1}]}` | `backend/main.py` 寫的，表示FastAPI 能連上PostgreSQL |
+| http://localhost:8000/docs | FastAPI 的官方生成的API 文件頁面，會顯示目前所有endpoint(`GET /root`, `GET /db-test`, `GET /items`, `POST /items`) | `backend/main.py` 寫的，每一個`@app.get` / `@app.post` 就是建立一個endpoint，可以用`http://localhost:8000/XXX` 連到 | -->
 
-### Docker 小筆記 1：開啟 / 關掉docker
+#### Docker 小筆記：開啟 / 關掉docker
 有專業版本、白話版本、無腦照做版本，不想理解只是想簡單把project 做完的可以看無腦照做版本就好了
 
-#### 1. 專業版本：
+**1. 專業版本：**
+
 |             指令             |             功能             |
 | --------------------------- | ---------------------------- |
 | `docker compose up --build` | build image 並啟動服務，**會**在terminal 顯示log |
@@ -79,7 +176,8 @@ docker compose up --build
 | `docker compose stop`       | 停止容器但不刪掉（docker desktop 還是看的到容器，只是被暫停了） |
 | `docker compose start`      | 重新啟動已存在容器 |
 
-#### 2. 白話版本：
+**2. 白話版本：**
+
 第一次做要`docker compose up --build`，之後除非有修改docker 相關的檔案(ex, 新安裝東西、改變設定之類的)，不然如果只是一般寫程式的話不用重新build
 
 docker 跑起來後可以從terminal 看到他的log，或是如果指令裡有`-d` 就會在背景跑，要看log 的話可以去docker desktop 看
@@ -88,42 +186,26 @@ docker 跑起來後可以從terminal 看到他的log，或是如果指令裡有`
 
 或是如果不想背指令的話也可以直接從docker desktop 按按鈕，第一次build 完之後就用Actions 那個按鈕開始、結束
 
-#### 3. 無腦照做版本：
+**3. 無腦照做版本：**
+
 1. 打開docker desktop (每一次要用docker 都要開，就算你都是輸指令還是要開)
 2. 進到專案資料夾(有`docker-compose.yml` 的資料夾)：`cd HCI`
 3. 第一次啟動服務：`docker compose up --build`
 4. 之後啟動服務：`docker compose start` 或是從docker desktop 按開始鍵
 5. 關閉服務：`docker compose stop` 或是從docker desktop 按暫停鍵
 
-### Docker 小筆記 2：Docker 相關指令(應該用不太到，可以先不用看，只是我寫給自己看的免得忘記了)
-- 檢查現有的containers
+### 之後每次要開啟專案
+前面Environment setup 建立好環境，之後就照下面這樣就可以開啟app 啦，不用再向上面那麼麻煩了
 
-    command:
+1. 電腦打開docker desktop
+2. 開啟後端伺服器(docker container)
     ```
-    docker ps -a
+    cd HCI-final-project
+    docker compose start
     ```
-    sample output:
-    ```bash
-    CONTAINER ID   IMAGE                             COMMAND                   CREATED        STATUS                 PORTS                                                   NAMES
-    8d94e75873c8   hci-frontend                      "docker-entrypoint.s…"   3 hours ago    Up 2 hours             0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp              focus_frontend
-
-    32b2ec08f6b9   hci-backend                       "uvicorn main:app --…"   3 hours ago    Up 2 hours             0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp              focus_backend
-
-    34fa3433337b   postgres:15                       "docker-entrypoint.s…"   3 hours ago    Up 2 hours (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp              focus_db
-
-    64924c160c50   acal-workspace-spring-2025-main   "bash /docker/start.…"   2 months ago   Up 3 days              0.0.0.0:5000->5000/tcp, [::]:5000->5000/tcp, 0.0.0.0:5173->5173/tcp, [::]:5173->5173/tcp, 0.0.0.0:8888->8888/tcp, [::]:8888->8888/tcp, 0.0.0.0:10000->10000/tcp, [::]:10000->10000/tcp   acal-workspace-spring-2025-main
+3. 開啟前端伺服器(Expo Go)
     ```
-
-- 進入container (開啟docker 的terminal)
-
-    因為我們的環境都是裝在docker 裡面，所以如果要跑一些指令的話也得在docker 裡面跑，比如說我們平常要跑一個python program，只要在自己電腦輸入`python code.py` 就好了，但現在所有相關的library、環境等等都在docker 裡面，如果直接在電腦本機跑的話，他會找不到這些library ，所以要進到docker 裡面，用docker 的terminal 跑`python code.py` 才能順利運行！（但這次project 應該不太會需要進到容器裡面，應該直接從瀏覽器看就好了）
-    ```bash
-    # 進入 backend 容器
-    docker exec -it focus_backend /bin/bash
-
-    # 進入 frontend 容器
-    docker exec -it focus_frontend /bin/bash
-
-    # 進入 PostgreSQL 容器
-    docker exec -it focus_db /bin/bash
+    cd HCI-final-project\modile
+    npm start
     ```
+4. 手機開啟Expo Go App，即可看到完整App！

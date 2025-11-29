@@ -33,17 +33,17 @@ services:
       db:
         condition: service_healthy
 
-  frontend:
-    build: ./frontend
-    container_name: focus_frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "3000:3000"
-    command: ["npm", "start", "--", "--host", "0.0.0.0"]
-    depends_on:
-      - backend
+  # frontend:
+  #   build: ./frontend
+  #   container_name: focus_frontend
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   ports:
+  #     - "3000:3000"
+  #   command: ["npm", "start", "--", "--host", "0.0.0.0"]
+  #   depends_on:
+  #     - backend
 
 volumes:
   db_data:
