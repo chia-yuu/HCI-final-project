@@ -9,7 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 
-export default function TabTwoScreen() {
+export default function DeadlineListScreen() {
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
@@ -27,11 +27,10 @@ export default function TabTwoScreen() {
           style={{
             fontFamily: Fonts.rounded,
           }}>
-          Explore
+          任務清單(deadline list)
         </ThemedText>
       </ThemedView>
-      <ThemedText>這是最初官方提供的範例檔案</ThemedText>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
+      <ThemedText>這一頁是任務清單(app/(tabs)/deadlineList.tsx)</ThemedText>
       <Collapsible title="File-based routing">
         <ThemedText>
           This app has two screens:{' '}

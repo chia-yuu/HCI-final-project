@@ -9,7 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 
-export default function TabOneScreen() {
+export default function FocusModeScreen() {
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
@@ -27,9 +27,10 @@ export default function TabOneScreen() {
           style={{
             fontFamily: Fonts.rounded,
           }}>
-          Test
+          專注模式(focus mode)
         </ThemedText>
       </ThemedView>
+      <ThemedText>這一頁是專注模式(app/(tabs)/focusMode.tsx)</ThemedText>
       <ThemedText>Hello hello hahahahaha</ThemedText>
       <Collapsible title="File-based routing">
         <ThemedText>

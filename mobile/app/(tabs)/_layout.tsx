@@ -31,9 +31,30 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="test"
+        name="focusMode"
         options={{
-          title: 'Test',
+          title: '專注模式',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="deadlineList"
+        options={{
+          title: '任務清單',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="friendList"
+        options={{
+          title: '好友列表',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="myRecord"
+        options={{
+          title: '我的紀錄',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
         }}
       />
