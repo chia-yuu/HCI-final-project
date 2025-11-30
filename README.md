@@ -1,7 +1,5 @@
 # FocusMate
 ## Environment setup
-哇裝環境真的好可怕啊啊啊啊，我不會弄環境 我不會docker，好可怕啊啊啊，嗚嗚嗚Ethon 救我QQ
-
 ### Implementation plan
 - APP 前端：React Native
 - 前後端連結：axios
@@ -209,3 +207,53 @@ docker 跑起來後可以從terminal 看到他的log，或是如果指令裡有`
     npm start
     ```
 4. 手機開啟Expo Go App，即可看到完整App！
+
+
+## React Native 小筆記
+### 和HTML 對應的概念
+React Native 和HTML 的概念滿類似的，只是元素名稱不一樣：
+> 謝謝chatGPT
+
+**結構**
+| React Native   | HTML                             | 說明                             |
+| -------------- | -------------------------------- | -------------------------------- |
+| `View`         | `<div>`                          | 最常見容器，做排版、包其他元素。    |
+| `SafeAreaView` | `<div>`（帶瀏覽器安全區）          | 多用在 iOS，避免內容貼到瀏海區域。 |
+| `ScrollView`   | `<div style="overflow: scroll">` | 可捲動的容器。                    |
+| `FlatList`     | `<ul>` / `<div>` + JS 渲染列表    | 高效列表，用於大量資料。           |
+| `SectionList`  | `<ul>`（有群組）                  | 有群組標題的列表。                 |
+
+**文字**
+| React Native | HTML                       | 說明                           |
+| ------------ | -------------------------- | ---------------------------- |
+| `Text`       | `<p>` / `<span>` / `<h1>`… | 所有文字都是 `Text`（沒有 h1、h2 等標籤）。 |
+| `Image`      | `<img>`                    | 顯示圖片。                        |
+
+**互動**
+| React Native         | HTML                         | 說明                 |
+| -------------------- | ---------------------------- | ------------------ |
+| `Pressable`          | `<button>` / `<a>` / 任意可點擊元素 | 最通用的可點擊元件（建議新專案用）。 |
+| `TouchableOpacity`   | `<button>`                   | 點擊後會變透明。           |
+| `TouchableHighlight` | `<button>`（高亮）               | 點擊時背景變色。           |
+| `TextInput`          | `<input>` / `<textarea>`     | 輸入文字用。             |
+| `Switch`             | `<input type="checkbox">`    | ON/OFF 開關。         |
+| `Button`             | `<button>`                   | 基本按鈕（樣式可客製化程度低）。   |
+
+**React Native 特有(沒有對應的HTML)**
+| React Native        | HTML | 說明                |
+| ------------------- | ---- | ----------------- |
+| `StatusBar`         |  無  | 控制手機狀態列（時間、電量那條）。 |
+| `Modal`             |  無  | 全螢幕彈窗。            |
+| `ActivityIndicator` |  無  | loading spinner。  |
+
+
+## My note
+### 分工
+按功能 or 前後端?
+- UI
+- api & db passing data (main.py)
+- 計時、拍照、其他特殊功能(?)
+- 多台機器連線? 可以騷擾別人
+
+### TODO
+- tab 切換的動畫，希望可以更平滑，根據切換的方向改變滑動方向 (component/page-template.tsx)
