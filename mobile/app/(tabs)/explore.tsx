@@ -1,5 +1,6 @@
+import React from "react";
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View, Text, TouchableOpacity } from "react-native";
 
 import { Collapsible } from '@/components/ui/collapsible';
 import { ExternalLink } from '@/components/external-link';
@@ -8,8 +9,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
+import { useRouter } from 'expo-router';
 
 export default function TabTwoScreen() {
+  const router = useRouter();
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
@@ -95,6 +98,36 @@ export default function TabTwoScreen() {
           ),
         })}
       </Collapsible>
+
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'center',
+      }}>
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#000000',
+            padding: 15,
+            marginBottom: 20,
+            marginHorizontal: 10
+          }}
+          onPress={() => router.push('/')}
+        >
+          <Text style={{ color: 'white', textAlign: 'center' }}>home</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#000000',
+            padding: 15,
+            marginBottom: 20,
+            marginHorizontal: 10
+          }}
+          onPress={() => router.push('/focusMode')}
+        >
+          <Text style={{ color: 'white', textAlign: 'center' }}>專注模式</Text>
+        </TouchableOpacity>
+      </View>
+
     </ParallaxScrollView>
   );
 }

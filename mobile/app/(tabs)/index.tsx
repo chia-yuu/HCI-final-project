@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Button, FlatList, StyleSheet } from "react-native";
+import { View, Text, TextInput, Button, FlatList, StyleSheet, TouchableOpacity } from "react-native";
 import api from "../../api/api";
+import PageTemplate from "@/components/page-template";
+import { useRouter } from 'expo-router';
 
 export default function App() {
   const [items, setItems] = useState([]);
@@ -33,8 +35,11 @@ export default function App() {
     loadItems();
   }, []);
 
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
+      {/* <PageTemplate title="Home" selectedTab="home"> */}
       <Text style={styles.title}>📦 Items from Database</Text>
 
       <FlatList
@@ -47,6 +52,35 @@ export default function App() {
         )}
       />
 
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'center',
+      }}>
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#000000',
+            padding: 15,
+            marginBottom: 20,
+            marginHorizontal: 10
+          }}
+          onPress={() => router.push('/explore')}
+        >
+          <Text style={{ color: 'white', textAlign: 'center' }}>explore</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#000000',
+            padding: 15,
+            marginBottom: 20,
+            marginHorizontal: 10
+          }}
+          onPress={() => router.push('/focusMode')}
+        >
+          <Text style={{ color: 'white', textAlign: 'center' }}>專注模式</Text>
+        </TouchableOpacity>
+      </View>
+      
       <TextInput
         style={styles.input}
         value={input}
@@ -55,6 +89,7 @@ export default function App() {
       />
 
       <Button title="Add Item" onPress={addItem} />
+      {/* </PageTemplate> */}
     </View>
   );
 }
