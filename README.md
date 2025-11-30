@@ -1,4 +1,23 @@
 # FocusMate
+- [Environment setup](#environment-setup)
+  * [Implementation plan](#implementation-plan)
+    + [觀念釐清](#觀念釐清)
+  * [Pre-request](#pre-request)
+    + [1. 安裝docker desktop](#1-安裝docker-desktop)
+    + [2. 安裝node.js](#2-安裝nodejs)
+  * [React Native + FastAPI + postgreSQL](#react-native--fastapi--postgresql)
+    + [1. 下載專案](#1-下載專案)
+    + [2. 設定IP](#2-設定ip)
+    + [3. 安裝前端所需套件(Expo Go)](#3-安裝前端所需套件expo-go)
+    + [4. 啟動Docker](#4-啟動docker)
+    + [Docker 小筆記：開啟 / 關掉docker](#docker-小筆記開啟--關掉docker)
+  * [之後每次要開啟專案](#之後每次要開啟專案)
+- [React Native 小筆記](#react-native-小筆記)
+  * [和HTML 對應的概念](#和html-對應的概念)
+- [My note](#my-note)
+  * [分工](#分工)
+  * [TODO](#todo)
+
 ## Environment setup
 ### Implementation plan
 - APP 前端：React Native
