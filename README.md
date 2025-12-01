@@ -1,7 +1,6 @@
 # FocusMate
 - [Environment setup](#environment-setup)
   * [Implementation plan](#implementation-plan)
-    + [觀念釐清](#觀念釐清)
   * [Pre-request](#pre-request)
     + [1. 安裝docker desktop](#1-安裝docker-desktop)
     + [2. 安裝node.js](#2-安裝nodejs)
@@ -13,7 +12,6 @@
     + [Docker 小筆記：開啟 / 關掉docker](#docker-小筆記開啟--關掉docker)
   * [之後每次要開啟專案](#之後每次要開啟專案)
 - [React Native 小筆記](#react-native-小筆記)
-  * [和HTML 對應的概念](#和html-對應的概念)
 - [My note](#my-note)
   * [分工](#分工)
   * [TODO](#todo)
@@ -60,7 +58,7 @@ Mac:
 ### React Native + FastAPI + postgreSQL
 好欸終於進入正題
 #### 1. 下載專案
-從我的[github](https://github.com/chia-yuu/HCI-final-project?tab=readme-ov-file) 下載檔案。
+從我的[GitHub](https://github.com/chia-yuu/HCI-final-project?tab=readme-ov-file) 下載檔案。
 
 ```bash
 git clone https://github.com/chia-yuu/HCI-final-project.git
@@ -78,7 +76,11 @@ HCI-final-project/
 ├── mobile/                 # Expo React Native app
 │   ├── api/
 |   |   └── api.js          # need to modify：要改成你自己的電腦 IP！！！
-│   ├── app/                # App 相關的檔案
+│   ├── app/
+|   |   ├── (tabs)          # App 的每個頁面
+|   |   ├── components
+|   |   └── ...
+|   ├── .env                # 沒有在GitHub 上，是下一步設定IP 那裡你自己新增的
 │   ├── package.json
 │   ├── app.json
 │   └── ...
@@ -92,6 +94,7 @@ HCI-final-project/
 
 在mobile/ 底下自己新增一個檔案`.env`，放入你的IP：
 ```
+# in mobile/.env
 API_URL=http://YOUR_IP:8000
 ```
 例如：
@@ -111,7 +114,7 @@ API_URL=http://192.168.123.456:8000
 >
 >  連線特定 DNS 尾碼 . . . . . . . . :
 >  連結-本機 IPv6 位址 . . . . . . . : xxxx::xxxx:xxxx:xxxx:xxxxxxx
->  IPv4 位址 . . . . . . . . . . . . : 192.168.xxx.xxx      <--- IPv4 就是我們要的IP address
+>  IPv4 位址 . . . . . . . . . . . . : 192.xxx.xxx.xxx      <--- IPv4 就是我們要的IP address
 >  子網路遮罩 . . . . . . . . . . . .: 255.xxx.xxx.xxx
 >  預設閘道 . . . . . . . . . . . . .: 192.xxx.xxx.xxx
 > ```
@@ -153,6 +156,25 @@ Google Play / App Store 下載Expo Go App，打開APP 用scan QR code 掃剛才�
 
 > 因為docker 還沒開始跑(還沒有server)，所以現在看到的畫面只有單純前端UI，沒有任何功能，也不能連結資料庫，所以如果這時候看到terminal 有報錯說`LOG  GET /items error: [AxiosError: Network Error]` 這是正常的！因為他找不到資料庫、抓不到資料。
 
+**Troubleshooting**
+
+如果你的手機出現一個黑色畫面寫這樣：
+```
+Welcome to Expo Start by creating a file in the
+D:\chia yu\nycu\HCI\mobile\app directory.
+Learn more about Expo Router in the documentation.
+
+$ touch D:\chia yu\nycu\HCI\mobile\app/index.tsx
+```
+可以試試看去`mobile\app.json` line 44 改改看true / false：
+```json
+"experiments": {
+  "typedRoutes": false,   // 試試看true 改成false / false 改成true
+  "reactCompiler": true
+}
+```
+因為我一開始這裡是true，結果第二天打開APP 就連不上了QAQ，結果這裡改成false 就好了，我也不懂為什麼==
+> reference: [Expo (SDK 51) not finding app/_layout.tsx in expo-router/entry.js](https://stackoverflow.com/questions/79147456/expo-sdk-51-not-finding-app-layout-tsx-in-expo-router-entry-js)
 
 #### 4. 啟動Docker
 打開docker desktop，然後在自己電腦的終端機輸入下列指令：
@@ -179,7 +201,7 @@ docker compose up --build
 | http://localhost:8000/docs | FastAPI 的官方生成的API 文件頁面，會顯示目前所有endpoint(`GET /root`, `GET /db-test`, `GET /items`, `POST /items`) | `backend/main.py` 寫的，每一個`@app.get` / `@app.post` 就是建立一個endpoint，可以用`http://localhost:8000/XXX` 連到 | -->
 
 #### Docker 小筆記：開啟 / 關掉docker
-有專業版本、白話版本、無腦照做版本，不想理解只是想簡單把project 做完的可以看無腦照做版本就好了
+有專業版本跟無腦照做版本，不想理解只是想簡單把project 做完的可以看無腦照做版本就好了
 
 **1. 專業版本：**
 
@@ -193,7 +215,7 @@ docker compose up --build
 | `docker compose stop`       | 停止容器但不刪掉（docker desktop 還是看的到容器，只是被暫停了） |
 | `docker compose start`      | 重新啟動已存在容器 |
 
-**2. 白話版本：**
+<!-- **2. 白話版本：**
 
 第一次做要`docker compose up --build`，之後除非有修改docker 相關的檔案(ex, 新安裝東西、改變設定之類的)，不然如果只是一般寫程式的話不用重新build
 
@@ -201,12 +223,12 @@ docker 跑起來後可以從terminal 看到他的log，或是如果指令裡有`
 
 啟動 / 停止容器的指令兩兩一組，如果用`docker compose down` 停止服務的話下次就用`docker compose up -d` 啟動，如果用`docker compose stop` 停止的話下次就用`docker compose start` 啟動，兩組指令的功能差不多，所以記指令只要記一組你喜歡的就好了
 
-或是如果不想背指令的話也可以直接從docker desktop 按按鈕，第一次build 完之後就用Actions 那個按鈕開始、結束
+或是如果不想背指令的話也可以直接從docker desktop 按按鈕，第一次build 完之後就用Actions 那個按鈕開始、結束 -->
 
-**3. 無腦照做版本：**
+**2. 無腦照做版本：**
 
 1. 打開docker desktop (每一次要用docker 都要開，就算你都是輸指令還是要開)
-2. 進到專案資料夾(有`docker-compose.yml` 的資料夾)：`cd HCI`
+2. 進到專案資料夾(有`docker-compose.yml` 的資料夾)：`cd HCI-final-project`
 3. 第一次啟動服務：`docker compose up --build`
 4. 之後啟動服務：`docker compose start` 或是從docker desktop 按開始鍵
 5. 關閉服務：`docker compose stop` 或是從docker desktop 按暫停鍵
@@ -231,7 +253,6 @@ docker 跑起來後可以從terminal 看到他的log，或是如果指令裡有`
 ## React Native 小筆記
 ### 和HTML 對應的概念
 React Native 和HTML 的概念滿類似的，只是元素名稱不一樣：
-> 謝謝chatGPT
 
 **結構**
 | React Native   | HTML                             | 說明                             |
@@ -271,8 +292,24 @@ React Native 和HTML 的概念滿類似的，只是元素名稱不一樣：
 按功能 or 前後端?
 - UI
 - api & db passing data (main.py)
-- 計時、拍照、其他特殊功能(?)
-- 多台機器連線? 可以騷擾別人
+- 研究計時、拍照、發通知給別人、其他特殊功能(?)
+- 研究多台機器連線? 可以騷擾別人
+- 研究怎麼把圖片變成網址存到DB
+
+### 待討論
+- 分工
+- 實作相關
+    - 要給App 挑個漂亮的顏色主題?
+    - 資料庫需要放上雲端嗎(Supabase)?
+    - 資料庫需要哪些table & 確定schema
+        - deadline table: 任務清單
+        - friend table: 好友列表
+        - my record table (user table): 我的紀錄 (含專注模式的計時、user info)
+- 功能相關
+    - 任務清單，結束的ddl 還要放在頁面上嗎? 如果要的話擺放順序應該怎麼排(按ddl 日期還是使用者完成日期)
+    - 添加好友，現在只要自己輸入對方的ID 就可以加了，對方需要同意嗎(我輸入ID -> 對方收到通知詢問XXX想關注你 -> 對方同意 -> 度方出現在我的好友列表)，不然這樣我只要隨便輸ID，如果剛好蒙對了我就可以把一堆陌生人加進來，偷看他是不是在讀書!?還是只要一個人輸入ID，雙方都會變成好友(資料庫裡面只會記userID = A, friendID = B，表示AB 是好友，不會再記userID = B, friendID = A)
+    - 我的紀錄的照片，需要記錄拍照時間、使用者筆記(可以寫一點小日記?)嗎? 還是只要紀錄照片就好了
+    - 每個人都有一個好友代碼(user_ID)，所以我們要做登入嗎? 還是怎麼產生這個好友代碼
 
 ### TODO
 - tab 切換的動畫，希望可以更平滑，根據切換的方向改變滑動方向 (component/page-template.tsx)
