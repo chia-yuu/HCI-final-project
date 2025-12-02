@@ -11,22 +11,14 @@
     + [4. 啟動Docker](#4-啟動docker)
     + [Docker 小筆記：開啟 / 關掉docker](#docker-小筆記開啟--關掉docker)
   * [之後每次要開啟專案](#之後每次要開啟專案)
-- [React Native 小筆記](#react-native-小筆記)
-- [My note](#my-note)
-  * [分工](#分工)
-  * [TODO](#todo)
+- [React Native 小筆記 - 和HTML 對應的概念](#react-native-小筆記---和html-對應的概念)
+- [Database 小筆記 - 從terminal 查看資料庫](#database-小筆記---從terminal-查看資料庫)
 
 ## Environment setup
 ### Implementation plan
 - APP 前端：React Native
-- 前後端連結：axios
-- 後端：fastAPI
-- 資料庫：postgreSQL
-- ~~網頁前端：React~~
-
-#### 觀念釐清
-
-我們之前說要用React 做APP，應該指的是**React Native**，React 做出來的話會是一個"web APP"，是寫HTML、用電腦瀏覽器打開的網頁；React Native 跟React 很像，但是他可以寫跨平台手機 App（iOS & Android），可以用手機APP 打開，像是一個真正的APP 而不是網頁。
+- 後端：FastAPI
+- 資料庫：PostgreSQL
 
 
 ### Pre-request
@@ -68,19 +60,26 @@ git clone https://github.com/chia-yuu/HCI-final-project.git
 ```
 HCI-final-project/
 │
-├── backend/                # FastAPI backend
+├── backend/                        # FastAPI backend
 │   ├── Dockerfile
 │   ├── main.py
 │   └── requirements.txt
 │
-├── mobile/                 # Expo React Native app
+├── mobile/                       # Expo React Native app
 │   ├── api/
-|   |   └── api.js          # need to modify：要改成你自己的電腦 IP！！！
 │   ├── app/
-|   |   ├── (tabs)          # App 的每個頁面
-|   |   ├── components
-|   |   └── ...
-|   ├── .env                # 沒有在GitHub 上，是下一步設定IP 那裡你自己新增的
+|   |   ├── (tabs)                # App 的每個頁面
+|   |   |   ├── _layout.tsx
+|   |   |   ├── deadline.tsx      # 任務清單
+|   |   |   ├── explore.tsx
+|   |   |   ├── focusMode.tsx     # 專注模式
+|   |   |   ├── friendList.tsx    # 好友列表
+|   |   |   ├── index.tsx
+|   |   |   └── myRecord.tsx      # 我的紀錄
+|   |   ├── _layout.tsx
+|   |   └── modal.tsx
+|   ├── components/
+|   ├── .env                      # 沒有在GitHub 上，是下一步設定IP 那裡你自己新增的
 │   ├── package.json
 │   ├── app.json
 │   └── ...
@@ -119,23 +118,6 @@ API_URL=http://192.168.123.456:8000
 >  預設閘道 . . . . . . . . . . . . .: 192.xxx.xxx.xxx
 > ```
 
-<!-- #### 1. 初始化React 專案 (我已經弄好了，不用做)
-```bash
-cd frontend
-npx create-react-app .
-```
-看到`Happy hacking!` 就是裝好了，過程中有出現`9 vulnerabilities (3 moderate, 6 high)` 之類的可以不用管他，最後提示`npm start` 不用理他，可以直接開始弄docker。
-
-這個是要建立`frontend/` 那些資料夾架構、package.json 那些用的。
-
-這個是網頁前端的，這次project 不需要-->
-
-<!-- #### 3. 安裝frontend 所需套件
-```bash
-cd HCI-final-project\mobile
-npm install
-``` -->
-
 #### 3. 安裝前端所需套件(Expo Go)
 在手機上可以打開我們寫的APP。
 
@@ -143,10 +125,9 @@ npm install
 ```bash
 cd HCI-final-project
 npm install -g expo-cli
-# npx create-expo-app mobile    # 建立app frontend 的資料夾 (這個我已經做完了，你們不用做)
 
 cd mobile
-npm install                     # 你們要做的是這個，安裝所需dependency
+npm install                     # 安裝所需dependency
 npm start                       # 開始執行app，terminal 會出現一個QR code
 ```
 
@@ -167,7 +148,7 @@ Learn more about Expo Router in the documentation.
 $ touch D:\chia yu\nycu\HCI\mobile\app/index.tsx
 ```
 可以試試看去`mobile\app.json` line 44 改改看true / false：
-```json
+```
 "experiments": {
   "typedRoutes": false,   // 試試看true 改成false / false 改成true
   "reactCompiler": true
@@ -188,18 +169,6 @@ docker compose up --build
 
 手機畫面正常顯示就完成了！恭喜你～～
 
-<!-- 會看到`focus_backend` & `focus_db` 各自的log (很長很長)，這兩個就是這次project 用到的服務。 -->
-
-
-<!-- #### 測試有沒有裝成功 (可略過)
-
-在瀏覽器輸入下列網址，有出現畫面或文字就表示對應的服務有成功裝好跑起來
-|          網址          |                              預期結果                              | 為什麼會有這個畫面 |
-| ---------------------- | ----------------------------------------------------------------- | --- |
-| http://localhost:8000/ | 醜醜JSON：`{"message":"Backend is running!"}` | `backend/main.py` 寫的，表示FastAPI 後端正常運作 |
-| http://localhost:8000/db-test | 醜醜JSON：`{"db":"connected","result":[{"?column?":1}]}` | `backend/main.py` 寫的，表示FastAPI 能連上PostgreSQL |
-| http://localhost:8000/docs | FastAPI 的官方生成的API 文件頁面，會顯示目前所有endpoint(`GET /root`, `GET /db-test`, `GET /items`, `POST /items`) | `backend/main.py` 寫的，每一個`@app.get` / `@app.post` 就是建立一個endpoint，可以用`http://localhost:8000/XXX` 連到 | -->
-
 #### Docker 小筆記：開啟 / 關掉docker
 有專業版本跟無腦照做版本，不想理解只是想簡單把project 做完的可以看無腦照做版本就好了
 
@@ -215,16 +184,6 @@ docker compose up --build
 | `docker compose stop`       | 停止容器但不刪掉（docker desktop 還是看的到容器，只是被暫停了） |
 | `docker compose start`      | 重新啟動已存在容器 |
 
-<!-- **2. 白話版本：**
-
-第一次做要`docker compose up --build`，之後除非有修改docker 相關的檔案(ex, 新安裝東西、改變設定之類的)，不然如果只是一般寫程式的話不用重新build
-
-docker 跑起來後可以從terminal 看到他的log，或是如果指令裡有`-d` 就會在背景跑，要看log 的話可以去docker desktop 看
-
-啟動 / 停止容器的指令兩兩一組，如果用`docker compose down` 停止服務的話下次就用`docker compose up -d` 啟動，如果用`docker compose stop` 停止的話下次就用`docker compose start` 啟動，兩組指令的功能差不多，所以記指令只要記一組你喜歡的就好了
-
-或是如果不想背指令的話也可以直接從docker desktop 按按鈕，第一次build 完之後就用Actions 那個按鈕開始、結束 -->
-
 **2. 無腦照做版本：**
 
 1. 打開docker desktop (每一次要用docker 都要開，就算你都是輸指令還是要開)
@@ -234,7 +193,7 @@ docker 跑起來後可以從terminal 看到他的log，或是如果指令裡有`
 5. 關閉服務：`docker compose stop` 或是從docker desktop 按暫停鍵
 
 ### 之後每次要開啟專案
-前面Environment setup 建立好環境，之後就照下面這樣就可以開啟app 啦，不用再向上面那麼麻煩了
+前面Environment setup 建立好環境，之後就照下面這樣就可以開啟app 啦，不用再像上面那麼麻煩了
 
 1. 電腦打開docker desktop
 2. 開啟後端伺服器(docker container)
@@ -250,8 +209,7 @@ docker 跑起來後可以從terminal 看到他的log，或是如果指令裡有`
 4. 手機開啟Expo Go App，即可看到完整App！
 
 
-## React Native 小筆記
-### 和HTML 對應的概念
+## React Native 小筆記 - 和HTML 對應的概念
 React Native 和HTML 的概念滿類似的，只是元素名稱不一樣：
 
 **結構**
@@ -286,30 +244,50 @@ React Native 和HTML 的概念滿類似的，只是元素名稱不一樣：
 | `Modal`             |  無  | 全螢幕彈窗。            |
 | `ActivityIndicator` |  無  | loading spinner。  |
 
+## Database 小筆記 - 從terminal 查看資料庫
+```pgsql
+/* 用terminal 開啟postgreSQL */
+docker exec -it focus_db psql -U postgres -d focusmate
 
-## My note
-### 分工
-按功能 or 前後端?
-- UI
-- api & db passing data (main.py)
-- 研究計時、拍照、發通知給別人、其他特殊功能(?)
-- 研究多台機器連線? 可以騷擾別人
-- 研究怎麼把圖片變成網址存到DB
 
-### 待討論
-- 分工
-- 實作相關
-    - 要給App 挑個漂亮的顏色主題?
-    - 資料庫需要放上雲端嗎(Supabase)?
-    - 資料庫需要哪些table & 確定schema
-        - deadline table: 任務清單
-        - friend table: 好友列表
-        - my record table (user table): 我的紀錄 (含專注模式的計時、user info)
-- 功能相關
-    - 任務清單，結束的ddl 還要放在頁面上嗎? 如果要的話擺放順序應該怎麼排(按ddl 日期還是使用者完成日期)
-    - 添加好友，現在只要自己輸入對方的ID 就可以加了，對方需要同意嗎(我輸入ID -> 對方收到通知詢問XXX想關注你 -> 對方同意 -> 度方出現在我的好友列表)，不然這樣我只要隨便輸ID，如果剛好蒙對了我就可以把一堆陌生人加進來，偷看他是不是在讀書!?還是只要一個人輸入ID，雙方都會變成好友(資料庫裡面只會記userID = A, friendID = B，表示AB 是好友，不會再記userID = B, friendID = A)
-    - 我的紀錄的照片，需要記錄拍照時間、使用者筆記(可以寫一點小日記?)嗎? 還是只要紀錄照片就好了
-    - 每個人都有一個好友代碼(user_ID)，所以我們要做登入嗎? 還是怎麼產生這個好友代碼
+/* 查看有哪些table */
+focusmate=# \dt
 
-### TODO
-- tab 切換的動畫，希望可以更平滑，根據切換的方向改變滑動方向 (component/page-template.tsx)
+         List of relations
+ Schema | Name  | Type  |  Owner
+--------+-------+-------+----------
+ public | items | table | postgres
+(1 row)
+
+
+/* 查看items 這個table 的schema */
+focusmate=# \d items
+
+                            Table "public.items"
+ Column |  Type   | Collation | Nullable |              Default
+--------+---------+-----------+----------+-----------------------------------
+ id     | integer |           | not null | nextval('items_id_seq'::regclass)
+ title  | text    |           | not null |
+ done   | boolean |           |          | false
+Indexes:
+    "items_pkey" PRIMARY KEY, btree (id)
+
+
+/* 執行SQL query */
+focusmate=# SELECT * FROM items;
+
+ id |   title   | done 
+----+-----------+------
+  1 | test      | f
+  2 | Gwalalala | f
+  3 | Wow       | f
+  4 | Success?  | f
+  6 | Try       | f
+  7 | Hahaha    | f
+  8 | What      | f
+(7 rows)
+
+
+/* 退出 */
+focusmate=# \q
+```
