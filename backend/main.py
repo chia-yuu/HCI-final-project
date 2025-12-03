@@ -62,13 +62,13 @@ async def startup():
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id SERIAL PRIMARY KEY,
-                name TEXT DEFAULT 'User',
-                is_studying BOOLEAN DEFAULT FALSE,
+                name TEXT not NULL,
+                is_studying BOOLEAN,
                 title TEXT,
-                badge INTEGER DEFAULT 0
+                badge INTEGER
             );
         """)
-
+        
         # friends
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS friends (
@@ -83,11 +83,11 @@ async def startup():
         # deadlines
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS deadlines (
-                id            SERIAL PRIMARY KEY,
-                user_id       INTEGER NOT NULL,
-                deadline_date DATE,
-                task          TEXT,
-                is_done       BOOLEAN,
+                id        SERIAL PRIMARY KEY,
+                user_id   INTEGER NOT NULL,
+                deadline_date   DATE,
+                task      TEXT,
+                is_done   BOOLEAN,
                 display_order INTEGER,
                 
                 UNIQUE (user_id, display_order),
@@ -108,7 +108,8 @@ async def startup():
             );
         """)
 
-        # pictures
+
+        # picture
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS pictures (
                 id      SERIAL PRIMARY KEY,
