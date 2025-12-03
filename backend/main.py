@@ -27,13 +27,77 @@ async def startup():
         max_size=10
     )
 
-    # init db, create table
+    # create table
     async with app.state.db_pool.acquire() as conn:
+        # items
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS items (
                 id SERIAL PRIMARY KEY,
                 title TEXT NOT NULL,
                 done BOOLEAN DEFAULT FALSE
+            );
+        """)
+
+        # users
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id SERIAL PRIMARY KEY,
+                name TEXT not NULL,
+                is_studying BOOLEAN,
+                title TEXT,
+                badge INTEGER
+            );
+        """)
+        
+        # friends
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS friends (
+                user_id   INTEGER NOT NULL,
+                friend_id INTEGER NOT NULL,
+
+                PRIMARY KEY (user_id, friend_id),
+
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                FOREIGN KEY (friend_id) REFERENCES users(user_id) ON DELETE CASCADE
+            );
+        """)
+
+        # deadlines
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS deadlines (
+                id        SERIAL PRIMARY KEY,
+                user_id   INTEGER NOT NULL,
+                deadline_date   DATE,
+                task      TEXT,
+                is_done   BOOLEAN,
+                display_order INTEGER,
+                
+                UNIQUE (user_id, display_order),
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+            );
+        """)
+
+        # focus_time
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS focus_time (
+                user_id       INTEGER NOT NULL,
+                record_date   DATE NOT NULL,
+                record_hour   INT NOT NULL CHECK (record_hour BETWEEN 0 AND 23),
+                focus_minutes INT DEFAULT 0 CHECK (focus_minutes BETWEEN 0 AND 60),
+
+                UNIQUE (user_id, record_date, record_hour),
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+            );
+        """)
+
+        # picture
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS pictures (
+                id      SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                img     BYTEA,
+
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
         """)
 
