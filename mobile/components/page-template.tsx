@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
 
     tabText: {
         fontSize: 14,
-        color: '#333',
+        color: '#0D1B2A',
     },
 
     contentBox: {
