@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions  } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
@@ -13,6 +13,7 @@ type Props = {
 };
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function PageTemplate({ title, selectedTab, children }: Props) {
     const router = useRouter();
@@ -49,7 +50,7 @@ export default function PageTemplate({ title, selectedTab, children }: Props) {
     }, [selectedTab]);
 
     return (
-        <ThemedView style={styles.container}>
+      <ThemedView style={[styles.container, {width: SCREEN_WIDTH, height: SCREEN_HEIGHT}]}>
         {/* 頁面名稱 */}
         <View style={styles.header}>
             <ThemedText type="header">{title}</ThemedText>
@@ -95,14 +96,9 @@ export default function PageTemplate({ title, selectedTab, children }: Props) {
 
         {/* 頁面內容 */}
         <View style={styles.contentBox}>
-            <ScrollView 
-                showsVerticalScrollIndicator={false} 
-                contentContainerStyle={styles.contentScroll}
-            >
-                {children}
-            </ScrollView>
+            {children}
         </View>
-    </ThemedView>
+      </ThemedView>
   );
 }
 
@@ -110,6 +106,8 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         paddingTop: 60,
+        backgroundColor: "#E0E1DD",
+        paddingHorizontal: 10,
     },
 
     header: {
@@ -120,8 +118,8 @@ const styles = StyleSheet.create({
     tabContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        paddingHorizontal: 10,
-        marginBottom: 20,
+        marginBottom: 10,
+        // paddingHorizontal: 10,
     },
 
     tabButton: {
@@ -140,10 +138,13 @@ const styles = StyleSheet.create({
     contentBox: {
         flex: 1,
         // backgroundColor: '#f7f7f7',
-        marginHorizontal: 20,
         borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
+        width: "100%",
+        height: "100%",
+        marginBottom: 20,
+        paddingHorizontal: 10,
     },
 
     contentScroll: {

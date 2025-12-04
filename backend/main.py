@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncpg
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 
 app = FastAPI()
 
@@ -28,9 +28,10 @@ class UserStatus(BaseModel):
     is_studying: bool
 
 class DeadlineItem(BaseModel):
+    id: int = 1
     user_id: int = 1
-    deadline_date: str
-    task: str
+    deadline_date: str = '2020-01-01'
+    task: str = 'task name'
     is_done: bool = False
     display_order: int = 1
 
@@ -90,9 +91,13 @@ async def startup():
                 is_done   BOOLEAN,
                 display_order INTEGER,
                 
-                UNIQUE (user_id, display_order),
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
+        """)
+
+        await conn.execute("""
+            ALTER TABLE IF EXISTS public.deadlines
+            DROP CONSTRAINT IF EXISTS deadlines_user_id_display_order_key;
         """)
 
         # focus_time
@@ -103,9 +108,13 @@ async def startup():
                 record_hour   INT NOT NULL CHECK (record_hour BETWEEN 0 AND 23),
                 focus_minutes INT DEFAULT 0 CHECK (focus_minutes BETWEEN 0 AND 60),
 
-                UNIQUE (user_id, record_date, record_hour),
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
+        """)
+
+        await conn.execute("""
+            ALTER TABLE IF EXISTS public.focus_time
+            DROP CONSTRAINT IF EXISTS focus_time_user_id_record_date_record_hour_key;
         """)
 
 
@@ -229,3 +238,63 @@ async def save_focus_session(session: FocusSession):
             "badge_earned": earned_badge
         }
 
+
+# === deadline list ===
+@app.get("/deadlines/get-deadlines")
+async def get_deadlines():
+    async with app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, user_id, deadline_date, task as thing, is_done, display_order
+            FROM deadlines 
+            ORDER BY display_order ASC
+        """)
+        return [dict(row) for row in rows]
+
+@app.post("/deadlines/reorder")
+async def reorder_deadlines(items: List[DeadlineItem]):
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            for item in items:
+                await conn.execute("""
+                    UPDATE deadlines
+                    SET display_order = $1
+                    WHERE id = $2 AND user_id = $3
+                """, item.display_order, item.id, 1)
+
+    return {"status": "success", "updated": len(items)}
+
+@app.post("/deadlines/click-done")
+async def deadline_done(item: DeadlineItem):
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("""
+                UPDATE deadlines
+                SET is_done = $1, display_order = -1
+                WHERE id = $2
+            """, item.is_done, item.id)
+
+    return {"status": "success", "updated": 1}
+
+@app.post("/deadlines/add-item")
+async def add_deadline(item: DeadlineItem):
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            # get new display_order
+            row = await conn.fetchrow("""
+                SELECT COALESCE(MAX(display_order), 0) AS max_order
+                FROM deadlines
+                WHERE user_id = 1
+            """)
+
+            next_order = row["max_order"] + 1
+
+            deadline_date = datetime.strptime(item.deadline_date, "%Y-%m-%d").date()
+
+            # add item
+            await conn.execute("""
+                INSERT INTO deadlines (user_id, deadline_date, task, is_done, display_order)
+                VALUES ($1, $2, $3, $4, $5)
+            """, 
+            1, deadline_date, item.task, item.is_done, next_order)
+
+    return {"status": "success", "update": 1}
