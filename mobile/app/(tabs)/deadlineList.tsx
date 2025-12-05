@@ -1,13 +1,12 @@
 import React, { isValidElement, useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Modal, TextInput } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, Animated } from "react-native";
 import api from '../../api/api';
 import PageTemplate from '@/components/page-template';
 import DeadlineItem from "@/components/deadline-item";
-import { ThemedText } from '@/components/themed-text';
 import { useFocusEffect } from '@react-navigation/native';
 import DraggableFlatList, { RenderItemParams } from "react-native-draggable-flatlist";
-import { Background } from "@react-navigation/elements";
-import { setStatusBarBackgroundColor } from "expo-status-bar";
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import ConfettiCannon from 'react-native-confetti-cannon';
 
 interface TodoItem {
   id: number;
@@ -21,16 +20,20 @@ interface TodoItem {
 export default function DeadlineListScreen() {
   const [deadlines, setDeadlines] = useState<TodoItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [newTask, setNewTask] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [editItemid, setEditItemid] = useState(-1);
   const [editing, setEditing] = useState(false);
+  const [exploded, setExploded] = useState(false);
+  const scale = new Animated.Value(1);
 
   // === get deadlines from DB ===
   const fetchDeadlines = async () => {
     try {
       const response = await api.get('/deadlines/get-deadlines');
-      const todos = response.data.filter((item: TodoItem) => !item.is_done);
-      setDeadlines(todos);
+      // const todos = response.data.filter((item: TodoItem) => !item.is_done);
+      setDeadlines(response.data);
     } catch (error) {
       console.error("fetchDeadlines() in deadlineList.tsx: 抓不到清單: ", error);
     }
@@ -85,12 +88,6 @@ export default function DeadlineListScreen() {
     }
   };
 
-  // 🟦 4. 點擊項目 → 編輯頁面
-  const onPressItem = (item: TodoItem) => {
-    if (!editing) return;
-    // TODO: navigation.navigate("EditDeadline", { id })
-  };
-
 
   // === add item ===
   const addItem = () => {
@@ -98,7 +95,7 @@ export default function DeadlineListScreen() {
   }
 
   function is_valid_date(dateStr: string) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)){
+    if (!/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateStr)){
       alert("日期格式應為YYYY-MM-DD");
       return false;
     }
@@ -131,7 +128,6 @@ export default function DeadlineListScreen() {
         return;
       }
       if(!is_valid_date(newDate.trim())){
-        alert("請輸入合法日期");
         return;
       }
 
@@ -154,12 +150,69 @@ export default function DeadlineListScreen() {
   }
 
 
+  // === edit ===
+  const onPressItem = () => {
+    setEditing(!editing);
+    if (!editing) return;
+  };
+
+  const onClickEditBox = async (item: TodoItem) => {
+    setEditItemid(item.id);
+    setNewTask(item.thing);
+    setNewDate(item.deadline_date);
+    setShowEditModal(true);
+  };
+
+  const submitEditDeadline = async () => {
+    try {
+      // check input valid
+      if (!newTask.trim()) {
+        alert("請填寫事項名稱！");
+        return;
+      }
+      if(!newDate.trim()){
+        alert("請填寫截止日期！");
+        return;
+      }
+      if(!is_valid_date(newDate.trim())){
+        return;
+      }
+
+      const body = {
+        id: editItemid,
+        task: newTask,
+        deadline_date: newDate,
+      };
+
+      await api.post("/deadlines/edit-item", body);
+
+      setEditItemid(-1);
+      setNewTask("");
+      setNewDate("");
+      setShowEditModal(false);
+
+      fetchDeadlines();
+    } catch (error) {
+      console.error("submitEditDeadline() in deadlineList.tsx: ", error);
+    }
+  }
+
+  // remove
+  const onClickRemoveBox = async (item: TodoItem) => {
+    await api.post("/deadlines/remove-item", {id: item.id});
+    fetchDeadlines();
+  }
+
   return (
     <PageTemplate title="任務清單" selectedTab="deadline">
-      {/* <TouchableOpacity onPress={() => setEditing(!editing)}>
-        <Text style={styles.editBtn}>{editing ? "完成" : "編輯"}</Text>
-      </TouchableOpacity> */}
       <View style = {styles.container}>
+        <View style = {styles.editContainer}>
+          <TouchableOpacity onPress={onPressItem} style={{paddingLeft: 10}}>
+            {!editing && <Icon name="edit" size={26} style={styles.editIcon} />}
+            {editing && <Icon name="draw" size={26} style={styles.editIcon} />}
+          </TouchableOpacity>
+        </View>
+        
         <DraggableFlatList<TodoItem>
           data={deadlines}
           keyExtractor={(item) => item.id.toString()}
@@ -168,22 +221,27 @@ export default function DeadlineListScreen() {
             <DeadlineItem
               item={item}
               isActive={isActive}
+              isEditing={editing == true}
               drag={drag}
               onClickCheckBox={onClickCheckBox}
-              onPressItem={onPressItem}
+              onClickEditBox={onClickEditBox}
+              onClickRemoveBox={onClickRemoveBox}
             />
           )}
           activationDistance={10}
-          style={styles.dragListContainer}
+          style={[styles.deadlineContainer, {height: editing? "80%" : "90%"}]}
         />
 
-        <TouchableOpacity
-          onPress={addItem}
-          style={[styles.addBtn]}
-        >
-          <Text style={{ fontSize: 18 }}>+ 新增</Text>
-        </TouchableOpacity>
+        {editing &&
+          <TouchableOpacity
+            onPress={addItem}
+            style={[styles.addBtn]}
+          >
+            <Text style={{ fontSize: 18 }}>+ 新增</Text>
+          </TouchableOpacity>
+        }
 
+        {/* add new item window */}
         <Modal
           transparent={true}
           visible={showAddModal}
@@ -227,6 +285,51 @@ export default function DeadlineListScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* edit item window */}
+        <Modal
+          transparent={true}
+          visible={showEditModal}
+          animationType="fade"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>編輯事項</Text>
+
+              <TextInput
+                placeholder={newTask}
+                style={styles.input}
+                value={newTask}
+                onChangeText={setNewTask}
+              />
+
+              <TextInput
+                placeholder={newDate}
+                style={[styles.input, {marginBottom: 15}]}
+                value={newDate}
+                onChangeText={setNewDate}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: "#c2dfe3" }]}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Text style={styles.btnText}>取消</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: "#415a77" }]}
+                  onPress={async () => {
+                    await submitEditDeadline();
+                  }}
+                >
+                  <Text style={[styles.btnText]}>更新</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </PageTemplate>
   );
@@ -238,25 +341,41 @@ const styles = StyleSheet.create({
     // backgroundColor: "green",
     height: "100%",
     width: "100%",
-    paddingVertical: 10,
+    // paddingVertical: 10,
+    flex: 1,
+    flexDirection: "column"
   },
-  dragListContainer: {
+  deadlineContainer: {
     // backgroundColor: "black",
     width: "100%",
-    maxHeight: "100%",
     paddingHorizontal: 10,
     marginBottom: 5,
+    borderWidth: 0,
   },
-  editBtn: {
-    fontSize: 18,
-    color: "#3B82F6",
+  editContainer: {
+    height: 30,
+    alignItems: "flex-end",
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  editIcon: {
+    flex: 1,
+    height: "100%",
+    backgroundColor: "white",
+    color: "black",
+    borderRadius:6,
+    borderColor: "black",
+    borderWidth: 1
   },
   addBtn: {
+    height: 60,
     marginTop: 16,
     marginHorizontal: 10,
     padding: 15,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: "#B9C2D4",
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#949ba9",
     alignItems: "center",
   },
   input: {

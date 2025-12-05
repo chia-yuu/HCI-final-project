@@ -175,9 +175,9 @@ async def create_item(item: dict):
 async def get_deadlines():
     async with app.state.db_pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, task as thing, is_done, deadline_date 
+            SELECT id, task as thing, is_done, display_order 
             FROM deadlines 
-            ORDER BY deadline_date ASC
+            ORDER BY display_order ASC
         """)
         return [dict(row) for row in rows]
 
@@ -244,11 +244,51 @@ async def save_focus_session(session: FocusSession):
 async def get_deadlines():
     async with app.state.db_pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, user_id, deadline_date, task as thing, is_done, display_order
-            FROM deadlines 
+            SELECT id, display_order, is_done
+            FROM deadlines
+            WHERE user_id = 1
             ORDER BY display_order ASC
         """)
+
+        # calculate the correct display_order
+        # is done -> order = -1, not done -> order = 1 ... n
+        undone = [row for row in rows if row["is_done"] is False]
+        done = [row for row in rows if row["is_done"] is True]
+
+        correct_orders = {}
+        for i, row in enumerate(undone):
+            correct_orders[row["id"]] = i + 1
+        for row in done:
+            correct_orders[row["id"]] = -1
+
+        # update display_order in db
+        updates = []
+        for row in undone:
+            correct = correct_orders[row["id"]]
+            if row["display_order"] != correct:
+                updates.append((correct, row["id"]))
+        for row in done:
+            if row["display_order"] != -1:
+                updates.append((-1, row["id"]))
+
+        if updates:
+            async with conn.transaction():
+                for new_order, id_ in updates:
+                    await conn.execute("""
+                        UPDATE deadlines
+                        SET display_order = $1
+                        WHERE id = $2
+                    """, new_order, id_)
+
+        rows = await conn.fetch("""
+            SELECT id, user_id, deadline_date, task as thing, is_done, display_order
+            FROM deadlines
+            WHERE user_id = 1
+            ORDER BY is_done ASC, display_order ASC
+        """)
+
         return [dict(row) for row in rows]
+
 
 @app.post("/deadlines/reorder")
 async def reorder_deadlines(items: List[DeadlineItem]):
@@ -296,5 +336,30 @@ async def add_deadline(item: DeadlineItem):
                 VALUES ($1, $2, $3, $4, $5)
             """, 
             1, deadline_date, item.task, item.is_done, next_order)
+
+    return {"status": "success", "update": 1}
+
+@app.post("/deadlines/edit-item")
+async def edit_deadline(item: DeadlineItem):
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            deadline_date = datetime.strptime(item.deadline_date, "%Y-%m-%d").date()
+            await conn.execute("""
+                UPDATE deadlines
+                SET task = $1, deadline_date = $2
+                WHERE id = $3
+            """, 
+            item.task, deadline_date, item.id)
+
+    return {"status": "success", "update": 1}
+
+@app.post("/deadlines/remove-item")
+async def remove_deadline(item: DeadlineItem):
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("""
+                DELETE FROM deadlines WHERE id = $1;
+            """, 
+            item.id)
 
     return {"status": "success", "update": 1}
