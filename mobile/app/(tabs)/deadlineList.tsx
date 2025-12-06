@@ -1,5 +1,5 @@
-import React, { isValidElement, useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, Animated } from "react-native";
+import React, { isValidElement, useEffect, useState, useRef } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, Dimensions, Animated, Easing } from "react-native";
 import api from '../../api/api';
 import PageTemplate from '@/components/page-template';
 import DeadlineItem from "@/components/deadline-item";
@@ -17,6 +17,9 @@ interface TodoItem {
   display_order: number;
 }
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+
 export default function DeadlineListScreen() {
   const [deadlines, setDeadlines] = useState<TodoItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -25,8 +28,7 @@ export default function DeadlineListScreen() {
   const [newDate, setNewDate] = useState("");
   const [editItemid, setEditItemid] = useState(-1);
   const [editing, setEditing] = useState(false);
-  const [exploded, setExploded] = useState(false);
-  const scale = new Animated.Value(1);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // === get deadlines from DB ===
   const fetchDeadlines = async () => {
@@ -70,6 +72,12 @@ export default function DeadlineListScreen() {
   // === click check box, modify is_done ===
   const onClickCheckBox = async (item: TodoItem) => {
     try{
+      if(item.is_done){
+        setShowConfetti(true);
+        setTimeout(() => {
+          setShowConfetti(false);
+        }, 4000);
+      }
       const newData = deadlines.map((d) =>
         d.id === item.id ? { ...d, is_done: !d.is_done } : d
       );
@@ -199,6 +207,10 @@ export default function DeadlineListScreen() {
 
   // remove
   const onClickRemoveBox = async (item: TodoItem) => {
+    setShowConfetti(true);
+    setTimeout(() => {
+      setShowConfetti(false);
+    }, 4000);
     await api.post("/deadlines/remove-item", {id: item.id});
     fetchDeadlines();
   }
@@ -240,6 +252,8 @@ export default function DeadlineListScreen() {
             <Text style={{ fontSize: 18 }}>+ 新增</Text>
           </TouchableOpacity>
         }
+
+        {showConfetti && <ConfettiCannon count={100} origin={{ x: SCREEN_WIDTH/2, y: 0 }} fadeOut={true} />}
 
         {/* add new item window */}
         <Modal

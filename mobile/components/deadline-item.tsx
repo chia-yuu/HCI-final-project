@@ -1,7 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { ColorProperties } from "react-native-reanimated/lib/typescript/Colors";
+import React, { useRef, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Image } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 interface TodoItem {
@@ -38,9 +37,40 @@ export default function DeadlineItem({
   else if (item.display_order === 2) bgColor = "#F0B56F", bdColor = "#a87e4d";
   else if (item.display_order === -1) bgColor = "#E0E1ED", bdColor = "#b3b4bd";
 
+
+  // 震動效果
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (item.display_order === 1) {
+        Animated.loop(
+        Animated.sequence([
+            Animated.timing(shakeAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: -1, duration: 50, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+        ])
+        ).start();
+    }
+    else if (item.display_order === 2) {
+        Animated.loop(
+        Animated.sequence([
+            Animated.timing(shakeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: -1, duration: 200, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ])
+        ).start();
+    }
+  }, [item.display_order]);
+
+  const rotate = shakeAnim.interpolate({
+    inputRange: [-1, 1],
+    outputRange: item.display_order == 1? ["-2deg", "2deg"] : item.display_order == 2? ["-1deg", "1deg"] : ["0deg", "0deg"],
+  });
+
   return (
+    <Animated.View style={{ transform: [{ rotate }] }}>
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: isActive ? "#eee" : bgColor, borderColor: bdColor}]}
+      style={[styles.container, { backgroundColor: isActive ? "#c2dfe3" : bgColor, borderColor: bdColor}]}
     >
       <TouchableOpacity
         onLongPress={item.is_done ? null : drag}
@@ -81,12 +111,20 @@ export default function DeadlineItem({
       {isEditing &&
         <TouchableOpacity
             onPress={() => onClickRemoveBox(item)}
-            style={styles.editingBox}
+            style={[styles.editingBox, {marginRight: item.display_order == 1 || item.display_order == 2? -17 : 12}]}
         >
             <Icon name="delete" size={24} color={"#707177"}/>
         </TouchableOpacity>
       }
+
+      {item.display_order == 1 && 
+        <Image source={require('../assets/images/bomb1.png')} style={[styles.bombImg, {top: -15}]}></Image>
+      }
+      {item.display_order == 2 && 
+        <Image source={require('../assets/images/bomb2.png')} style={[styles.bombImg, {bottom: -20}]}></Image>
+      }
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -100,6 +138,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
+    position: 'relative',
   },
   dragHandle: {
     width: 30,
@@ -141,5 +180,10 @@ const styles = StyleSheet.create({
   taskText: {
     fontSize: 16,
     color: "#111",
+  },
+  bombImg: {
+    height: 30,
+    width: 30,
+    right: -18
   },
 });
