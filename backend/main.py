@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import asyncpg
 from pydantic import BaseModel
@@ -34,6 +34,14 @@ class DeadlineItem(BaseModel):
     task: str = 'task name'
     is_done: bool = False
     display_order: int = 1
+
+# 💡 新增：好友狀態回應模型，用於 /api/v1/friends/status
+class FriendStatusResponse(BaseModel):
+    friend_id: int
+    name: str
+    is_studying: bool
+    current_timer: Optional[str] = None
+
 
 # DB basic setting
 @app.on_event("startup")
@@ -108,9 +116,11 @@ async def startup():
                 record_hour   INT NOT NULL CHECK (record_hour BETWEEN 0 AND 23),
                 focus_minutes INT DEFAULT 0 CHECK (focus_minutes BETWEEN 0 AND 60),
 
-                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                PRIMARY KEY (user_id, record_date, record_hour)
             );
         """)
+        # 註: 我在這裡將 PRIMARY KEY 加入到 focus_time 表格，以便 ON CONFLICT 生效
 
         await conn.execute("""
             ALTER TABLE IF EXISTS public.focus_time
@@ -167,6 +177,53 @@ async def create_item(item: dict):
         )
         return dict(row)
 
+# 💡 新增：處理 /api/v1/friends/status 的路由
+@app.get("/api/v1/friends/status", response_model=List[FriendStatusResponse])
+async def get_friends_status(ids: str = Query(..., description="好友 User ID 列表，以逗號分隔, e.g., 1,2,3")):
+    """
+    獲取指定 ID 列表的好友專注狀態。
+    """
+    try:
+        # 將逗號分隔的字串轉換為整數列表
+        friend_ids = [int(i.strip()) for i in ids.split(',') if i.strip().isdigit()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="IDs 參數必須是逗號分隔的數字列表。")
+    
+    if not friend_ids:
+        return []
+
+    # 將 ID 列表轉換為 PostgreSQL 查詢參數
+    id_tuple = tuple(friend_ids)
+
+    async with app.state.db_pool.acquire() as conn:
+        # 查詢 users 表格獲取 user_id 和 is_studying 狀態
+        rows = await conn.fetch("""
+            SELECT 
+                user_id, 
+                name,
+                is_studying,
+                badge -- 額外獲取 badge 欄位
+            FROM users 
+            WHERE user_id = ANY($1::int[])
+        """, id_tuple)
+        
+        results: List[FriendStatusResponse] = []
+        
+        for row in rows:
+            timer = None
+            if row["is_studying"] is True and row["user_id"] == 3:
+                # 假設 ID=3 的人正在專注且有計時器顯示
+                timer = "01:30:00"
+
+            results.append(FriendStatusResponse(
+                friend_id=row["user_id"],
+                name=row["name"],
+                is_studying=row["is_studying"] if row["is_studying"] is not None else False,
+                current_timer=timer
+            ))
+            
+        return results
+
 # === focus mode的功能(by sandra) ===
 
 # 取得 Deadlines (放在下面的list)
@@ -206,7 +263,7 @@ async def save_focus_session(session: FocusSession):
 
         # 拿到徽章，加到badge
         if earned_badge:
-            await conn.execute("UPDATE users SET badge = badge + 1 WHERE user_id = $1", session.user_id)
+            await conn.execute("UPDATE users SET badge = COALESCE(badge, 0) + 1 WHERE user_id = $1", session.user_id)
 
         # 寫入 focus_time (每小時統計)
         end_time = datetime.now()
@@ -241,7 +298,7 @@ async def save_focus_session(session: FocusSession):
 
 # === deadline list ===
 @app.get("/deadlines/get-deadlines")
-async def get_deadlines():
+async def get_deadlines_with_reorder(): # 重新命名以避免與上面的 /deadlines 衝突
     async with app.state.db_pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT id, display_order, is_done
@@ -251,7 +308,6 @@ async def get_deadlines():
         """)
 
         # calculate the correct display_order
-        # is done -> order = -1, not done -> order = 1 ... n
         undone = [row for row in rows if row["is_done"] is False]
         done = [row for row in rows if row["is_done"] is True]
 
