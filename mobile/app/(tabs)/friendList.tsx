@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
+import api from '../../api/api';
 
 // --- 1. 定義 Props 介面 (ReminderModal) ---
 interface ReminderModalProps {
@@ -89,30 +90,20 @@ interface UserData {
   badgeCount: number;
 }
 
-const API_BASE_URL = 'http://192.168.0.199:8000'; 
-
 const fetchFriendStatuses = async (friendIds: number[]): Promise<FriendStatusAPIResponse[]> => {
     
     const idsString = friendIds.join(',');
-    const API_URL = `${API_BASE_URL}/api/v1/friends/status?ids=${idsString}`;
     
     try {
-        console.log(`[API 呼叫] 請求網址: ${API_URL}`);
+        // console.log(`[API 呼叫] 請求網址: ${API_URL}`);
         
-        const response = await fetch(API_URL);
+        const response = await api.get("/api/v1/friends/status", {
+          params: { ids: idsString }
+        });
+        const data = response.data;
         
-        console.log(`[API 檢查] 狀態碼: ${response.status}`);
-        
-        if (!response.ok) {
-            const errorText = await response.text(); 
-            console.error(`[API 錯誤] 請求失敗，回應內容: ${errorText}`);
-            throw new Error(`API 請求失敗，狀態碼: ${response.status}`);
-        }
-        
-        const data = await response.json();
-
-        console.log("[API 檢查] 從後端接收到的好友狀態資料:");
-        console.log(data); 
+        // console.log("[API 檢查] 從後端接收到的好友狀態資料:");
+        // console.log(data); 
         
         if (!Array.isArray(data)) {
              console.error("API 返回的資料格式不正確 (不是陣列)。");

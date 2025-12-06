@@ -225,6 +225,7 @@ export default function DeadlineListScreen() {
           </TouchableOpacity>
         </View>
         
+        {deadlines.length > 0 ? (
         <DraggableFlatList<TodoItem>
           data={deadlines}
           keyExtractor={(item) => item.id.toString()}
@@ -243,6 +244,10 @@ export default function DeadlineListScreen() {
           activationDistance={10}
           style={[styles.deadlineContainer, {height: editing? "80%" : "90%"}]}
         />
+        ) : (
+          !editing && <Text style={{color:'#999', fontSize: 18, marginHorizontal: 10, marginTop: 20}}>哇你所有事情都做完了！恭喜你～</Text>
+        )
+        }
 
         {editing &&
           <TouchableOpacity
