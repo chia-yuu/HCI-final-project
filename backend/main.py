@@ -151,6 +151,7 @@ async def db_test():
     except Exception as e:
         return {"db": "failed", "error": str(e)}
 
+# 前端後端溝通橋樑
 @app.get("/items")
 async def get_items():
     async with app.state.db_pool.acquire() as conn:
