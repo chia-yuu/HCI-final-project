@@ -8,7 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type Props = {
     title: string;
-    selectedTab: 'home' | 'explore' |'focus' | 'deadline' | 'friend' | 'record';
+    selectedTab: 'focus' | 'deadline' | 'friend' | 'record';
     children: React.ReactNode;
 };
 
@@ -23,8 +23,6 @@ export default function PageTemplate({ title, selectedTab, children }: Props) {
     const tabRefs = useRef<{ [key: string]: TouchableOpacity | null }>({});
 
     const tabs = [
-        { key: 'home', label: 'Home', path: '/' },                  // 之後要刪掉
-        { key: 'explore', label: 'Explore', path: '/explore' },     // 之後要刪掉
         { key: 'focus', label: '專注模式', path: '/focusMode' },
         { key: 'deadline', label: '任務清單', path: '/deadlineList' },
         { key: 'friend', label: '好友列表', path: '/friendList' },

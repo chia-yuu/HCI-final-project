@@ -12,8 +12,6 @@ export default function TabLayout() {
       headerShown: false,
       animation: 'none'
     }}>
-        <Stack.Screen name="index"/>
-        <Stack.Screen name="explore"/>
         <Stack.Screen name="focusMode"/>
         <Stack.Screen name="deadlineList"/>
         <Stack.Screen name="friendList"/>
