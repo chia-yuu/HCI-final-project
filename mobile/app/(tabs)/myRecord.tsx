@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'; 
-import { ScrollView, View, Image, Dimensions, TouchableOpacity, Modal, Alert } from 'react-native';
+import { ScrollView, View, Image, Dimensions, TouchableOpacity, Modal, Alert, StyleSheet } from 'react-native'; // ⭐ 1. 導入 StyleSheet
 import PageTemplate from '@/components/page-template';
 import { ThemedText } from '@/components/themed-text';
 import { LineChart, BarChart } from 'react-native-chart-kit';
@@ -14,27 +14,39 @@ const AVAILABLE_TITLES = [
 // ⭐ 顏色定義
 const PRIMARY_TEXT_COLOR = '#0D1B2A';
 const PAGE_BACKGROUND_COLOR = '#E0E1DD'; 
+const BAR_BACKGROUND_COLOR = '#d1d5db'; // 來自 FriendListScreen 的背景色
 
-// ⭐ 假設後端 URL 和用戶 ID
-const BASE_URL = 'http://192.168.0.151:8000'; 
-const USER_ID = 1;
+// ----------------------------------------------------
+// ⭐ 模擬資料 (MOCK DATA)
+// ----------------------------------------------------
+const MOCK_STATUS_DATA = {
+    titleName: AVAILABLE_TITLES[1].name, // 預設為 '閱讀專家'
+    badgeCount: 15, 
+};
+
+const MOCK_WEEKLY_DATA = {
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    data: [6.5, 4.8, 7.5, 8.5, 5.0, 6.5, 7.0], // 模擬每天專注時長 (小時)
+};
+// ----------------------------------------------------
 
 export default function MyRecordScreen() {
   const screenWidth = Dimensions.get('window').width;
-  const chartWidth = screenWidth - 20; 
+  // 讓圖表寬度與 ScrollView 的 padding 一致 (screenWidth - 2*20)
+  const chartWidth = screenWidth - 40; 
 
-  // ⭐ 1. 狀態：預設為 '專注新人'
-  const [titleName, setTitleName] = useState(AVAILABLE_TITLES[0].name); 
-  const [badgeCount, setBadgeCount] = useState(0); 
+  // ⭐ 1. 狀態：從模擬資料設定初始值
+  const [titleName, setTitleName] = useState(MOCK_STATUS_DATA.titleName); 
+  const [badgeCount, setBadgeCount] = useState(MOCK_STATUS_DATA.badgeCount); 
   const [isTitleMenuVisible, setIsTitleMenuVisible] = useState(false);
   const [weeklyReadingData, setWeeklyReadingData] = useState({
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [{ data: [0, 0, 0, 0, 0, 0, 0] }],
+    labels: MOCK_WEEKLY_DATA.labels,
+    datasets: [{ data: MOCK_WEEKLY_DATA.data }],
   });
   const [isLoading, setIsLoading] = useState(true);
 
   // ----------------------------------------------------
-  // ⭐ 2. 資料獲取邏輯
+  // ⭐ 2. 資料獲取邏輯 (使用模擬資料取代後端呼叫)
   // ----------------------------------------------------
   useEffect(() => {
     fetchData();
@@ -42,18 +54,16 @@ export default function MyRecordScreen() {
 
   const fetchData = async () => {
     setIsLoading(true);
-    try {
-      const statusResponse = await fetch(`${BASE_URL}/user/status/${USER_ID}`);
-      const statusData = await statusResponse.json();
-      if (!statusData.error) {
-        setTitleName(statusData.titleName);
-        setBadgeCount(statusData.badgeCount);
-      }
+    // 模擬網路延遲
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
 
-      const weeklyResponse = await fetch(`${BASE_URL}/record/weekly-focus/${USER_ID}`);
-      const weeklyData = await weeklyResponse.json();
-      if (!weeklyData.error) {
-        const chartColors = [
+    try {
+        // 使用模擬資料設定使用者狀態
+        setTitleName(MOCK_STATUS_DATA.titleName);
+        setBadgeCount(MOCK_STATUS_DATA.badgeCount);
+
+        // 使用模擬資料設定週專注紀錄
+        const chartColors = [
           (opacity = 1) => `rgba(0, 150, 136, ${opacity})`, 
           (opacity = 1) => `rgba(255, 87, 34, ${opacity})`, 
           (opacity = 1) => `rgba(103, 58, 183, ${opacity})`, 
@@ -64,23 +74,23 @@ export default function MyRecordScreen() {
         ];
 
         setWeeklyReadingData({
-          labels: weeklyData.labels,
+          labels: MOCK_WEEKLY_DATA.labels,
           datasets: [{ 
-            data: weeklyData.data,
-            colors: chartColors.slice(0, weeklyData.data.length),
+            data: MOCK_WEEKLY_DATA.data,
+            colors: chartColors.slice(0, MOCK_WEEKLY_DATA.data.length),
           }],
         });
-      }
+
     } catch (error) {
-      console.error("Failed to fetch data:", error);
-      Alert.alert("錯誤", "無法連線到後端服務或獲取數據。");
+      console.error("Error setting mock data:", error);
     } finally {
       setIsLoading(false);
     }
   };
   
+  // 稱號選單點擊處理
   const selectTitle = (newTitle) => {
-    setIsTitleMenuVisible(false); 
+    setIsTitleMenuVisible(false); // 關閉下拉選單
 
     Alert.alert(
       "更換稱號確認",
@@ -122,7 +132,7 @@ export default function MyRecordScreen() {
     color: (opacity = 1) => `rgba(13, 27, 42, ${opacity})`, 
     labelColor: (opacity = 1) => `rgba(13, 27, 42, ${opacity})`, 
     style: { borderRadius: 12 },
-    paddingLeft: 30, 
+    paddingLeft: 0, 
   };
 
   if (isLoading) {
@@ -141,207 +151,257 @@ export default function MyRecordScreen() {
     <PageTemplate title="我的紀錄" selectedTab="record">
       <ScrollView style={{ paddingHorizontal: 20, paddingBottom: 40, backgroundColor: PAGE_BACKGROUND_COLOR }}>
 
-        {/* ---------------------------------------------------- */}
-        {/* 稱號與徽章顯示區 (Title & Badge) */}
-        {/* ---------------------------------------------------- */}
-        <View style={{ 
-          flexDirection: 'row', 
-          alignItems: 'center', 
-          marginTop: 10,
-          marginBottom: 10,
-          marginLeft: -80
-        }}>
-          
-          {/* 左側：稱號與下拉選單 - 最終修正：確保內部緊貼 */}
-          <TouchableOpacity 
-            onPress={() => setIsTitleMenuVisible(true)} 
+        {/* 修正 1: 外層 Wrapper，整體向左移 50 單位 */}
+        <View style={{ marginLeft: -50 }}>
+
+          {/* ---------------------------------------------------- */}
+          {/* ⭐ 修正 2: 使用 FriendList 的樣式重構 Title & Badge 區塊 */}
+          {/* ---------------------------------------------------- */}
+          <View style={styles.titleBadgeRow}> 
+            
+            {/* 左側：稱號與下拉選單 */}
+            <View style={styles.titleContainer}> 
+              <ThemedText style={styles.titleText}>title:</ThemedText>
+              <TouchableOpacity 
+                onPress={() => setIsTitleMenuVisible(!isTitleMenuVisible)} // 切換下拉選單
+                style={styles.dropdownToggle}
+              >
+                <ThemedText style={styles.titleTextBold}>{titleName}</ThemedText>
+                <ThemedText style={styles.dropdownArrow}> ▼</ThemedText> 
+              </TouchableOpacity>
+              
+              {/* 渲染下拉選單 (絕對定位，取代原 Modal) */}
+              {isTitleMenuVisible && (
+                <View style={styles.dropdownMenu}>
+                  {AVAILABLE_TITLES.map((title) => (
+                    <TouchableOpacity
+                      key={title.id}
+                      style={styles.dropdownItem}
+                      onPress={() => selectTitle(title.name)}
+                    >
+                      <ThemedText style={styles.dropdownItemText}>{title.name}</ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* 右側：徽章圖像與計數 */}
+            <View style={styles.badgeContainer}> 
+              <ThemedText style={styles.badgeIcon}>🏅</ThemedText> 
+              <ThemedText style={styles.badgeCount}>X{badgeCount}</ThemedText>
+            </View>
+          </View>
+
+
+          {/* 每日專注時長 (BarChart) - 以下內容保持原樣 */}
+          <ThemedText 
+            type="default" 
             style={{ 
-              flexDirection: 'row', 
-              // ⭐ 關鍵修正：確保所有子元素從左側緊密排列，消除文字元件可能產生的多餘空間
-              justifyContent: 'flex-start', 
-              alignItems: 'center',
-              backgroundColor: PAGE_BACKGROUND_COLOR, 
-              padding: 8,
-              borderRadius: 8,
-              flexShrink: 1, // 讓整個按鈕在需要時可以被壓縮
+              marginTop: 10, 
+              fontSize: 20, 
+              color: PRIMARY_TEXT_COLOR,
+              fontWeight: 'bold',
             }}
           >
-            <ThemedText 
-              type="default" 
-              style={{ 
-                fontSize: 18, 
-                marginRight: -20, 
-                color: PRIMARY_TEXT_COLOR,
+            每日專注時長
+          </ThemedText>
+          <View>
+            <BarChart
+              data={weeklyReadingData}
+              width={chartWidth} 
+              height={180}               
+              fromZero
+              showValuesOnTopOfBars={false}
+              withInnerLines={false}
+              withCustomBarColorFromData={true}
+              flatColor={true}
+              chartConfig={{
+                ...commonChartConfig,
+                paddingLeft: 30, 
+                color: (opacity = 1) => `rgba(13, 27, 42, ${opacity})`, 
+                propsForBackgroundLines: { strokeDasharray: '' },
+                paddingRight: 0,
+                barPercentage: 0.8
               }}
-            >
-              title: {titleName}
-            </ThemedText>
-            {/* 倒三角圖示 */}
-            <View style={{ width: 0, height: 0, borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 5, borderStyle: 'solid', backgroundColor: 'transparent', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: PRIMARY_TEXT_COLOR, marginTop: 3 }} />
-          </TouchableOpacity>
+              style={{
+                marginVertical: 10,
+                borderRadius: 12,
+                marginLeft: 30, 
+              }}
+              showBarTops={false}
+            />
+          </View>
 
-          {/* 右側：徽章圖像與計數 - 使用絕對定位固定在右側 (保持不變) */}
-          <View 
+          {/* 專注時間 (LineChart) */}
+          <ThemedText 
+            type="default" 
             style={{ 
-              flexDirection: 'row', 
+              marginTop: 20, 
+              fontSize: 18, 
+              color: PRIMARY_TEXT_COLOR,
+              fontWeight: 'bold',
+            }}
+          >
+            專注時間
+          </ThemedText>
+          <View>
+            <LineChart
+              data={focusTimeData}
+              width={chartWidth} 
+              height={160}  
+              yAxisLabel=""
+              chartConfig={{
+                ...commonChartConfig,
+                paddingLeft: 30, 
+                color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, 
+                propsForDots: { r: '3' },
+              }}
+              bezier
+              style={{
+                marginVertical: 10,
+                borderRadius: 12,
+                marginLeft: 30, 
+              }}
+            />
+          </View>
+
+          {/* 今日回顧圖片區 */}
+          <ThemedText 
+            type="default" 
+            style={{ 
+              marginTop: 20, 
+              fontSize: 18, 
+              color: PRIMARY_TEXT_COLOR,
+              fontWeight: 'bold',
+            }}
+          >
+            今日回顧
+          </ThemedText>
+
+          <View
+            style={{
+              marginTop: 10,
+              padding: 12,
+              backgroundColor: PAGE_BACKGROUND_COLOR, 
+              borderRadius: 12,
               alignItems: 'center',
-              position: 'absolute', 
-              right: 0, 
             }}
           >
             <Image
-              source={{ uri: 'https://placekitten.com/50/50' }} 
-              style={{ width: 30, height: 30, borderRadius: 15 }}
+              source={{
+                uri: 'https://placekitten.com/400/300',
+              }}
+              style={{ width: screenWidth - 64, height: 120, borderRadius: 8 }}
             />
-            <ThemedText type="default" style={{ fontSize: 18, marginLeft: 5, color: PRIMARY_TEXT_COLOR }}>
-              : X{badgeCount}
-            </ThemedText>
-            <ThemedText style={{ marginLeft: 10, fontSize: 12, color: 'red' }}>
-                ({badgeCount})
-            </ThemedText>
           </View>
-        </View>
-
-        {/* ---------------------------------------------------- */}
-        {/* 每日專注時長 (BarChart) - 標題對齊修正保持不變 */}
-        {/* ---------------------------------------------------- */}
-        <ThemedText 
-          type="default" 
-          style={{ 
-            marginTop: 10, 
-            fontSize: 20, 
-            color: PRIMARY_TEXT_COLOR,
-            marginLeft: -20, 
-            paddingLeft: 20, 
-          }}
-        >
-          每日專注時長
-        </ThemedText>
-        <View style={{ marginLeft: -50 }}>
-          <BarChart
-            data={weeklyReadingData}
-            width={chartWidth}
-            height={180}               
-            fromZero
-            showValuesOnTopOfBars={false}
-            withInnerLines={false}
-            withCustomBarColorFromData={true}
-            flatColor={true}
-            chartConfig={{
-              ...commonChartConfig,
-              color: (opacity = 1) => `rgba(13, 27, 42, ${opacity})`, 
-              propsForBackgroundLines: { strokeDasharray: '' },
-              paddingRight: 0,
-              barPercentage: 0.8
-            }}
-            style={{
-              marginVertical: 10,
-              borderRadius: 12,
-            }}
-            showBarTops={false}
-          />
-        </View>
-
-        {/* ---------------------------------------------------- */}
-        {/* 專注時間 (LineChart) - 標題對齊修正保持不變 */}
-        {/* ---------------------------------------------------- */}
-        <ThemedText 
-          type="default" 
-          style={{ 
-            marginTop: 20, 
-            fontSize: 18, 
-            color: PRIMARY_TEXT_COLOR,
-            marginLeft: -20, 
-            paddingLeft: 20, 
-          }}
-        >
-          專注時間
-        </ThemedText>
-        <View style={{ marginLeft: -50 }}>
-          <LineChart
-            data={focusTimeData}
-            width={chartWidth}
-            height={160}  
-            yAxisLabel=""
-            chartConfig={{
-              ...commonChartConfig,
-              color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, 
-              propsForDots: { r: '3' },
-            }}
-            bezier
-            style={{
-              marginVertical: 10,
-              borderRadius: 12,
-            }}
-          />
-        </View>
-
-        {/* ---------------------------------------------------- */}
-        {/* 今日回顧圖片區 - 標題對齊與圖片寬度修正保持不變 */}
-        {/* ---------------------------------------------------- */}
-        <ThemedText 
-          type="default" 
-          style={{ 
-            marginTop: 20, 
-            fontSize: 18, 
-            color: PRIMARY_TEXT_COLOR,
-            marginLeft: -20, 
-            paddingLeft: 20, 
-          }}
-        >
-          今日回顧
-        </ThemedText>
-
-        <View
-          style={{
-            marginTop: 10,
-            padding: 12,
-            backgroundColor: PAGE_BACKGROUND_COLOR, 
-            borderRadius: 12,
-            alignItems: 'center',
-          }}
-        >
-          <Image
-            source={{
-              uri: 'https://placekitten.com/400/300',
-            }}
-            style={{ width: screenWidth - 64, height: 120, borderRadius: 8 }}
-          />
-        </View>
+        </View> {/* End of Wrapper View (marginLeft: -50) */}
       </ScrollView>
-
-      {/* ---------------------------------------------------- */}
-      {/* 稱號選擇 Modal (保持不變) */}
-      {/* ---------------------------------------------------- */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isTitleMenuVisible}
-        onRequestClose={() => setIsTitleMenuVisible(false)}
-      >
-        <TouchableOpacity
-          style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'flex-start', paddingTop: 100, paddingLeft: 30 }} 
-          activeOpacity={1}
-          onPressOut={() => setIsTitleMenuVisible(false)}
-        >
-          <View style={{ backgroundColor: 'white', borderRadius: 8, padding: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}>
-            <ThemedText type="default" style={{ fontSize: 16, marginBottom: 5, fontWeight: 'bold', color: PRIMARY_TEXT_COLOR }}>
-              選擇稱號
-            </ThemedText>
-            {AVAILABLE_TITLES.map((title) => (
-              <TouchableOpacity
-                key={title.id}
-                onPress={() => selectTitle(title.name)}
-                style={{ paddingVertical: 8, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}
-              >
-                <ThemedText type="default" style={{ fontSize: 16, color: title.name === titleName ? 'blue' : PRIMARY_TEXT_COLOR }}>
-                  {title.name} {title.name === titleName ? ' (目前)' : ''}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </PageTemplate>
   );
 }
+
+// ⭐ 複製並調整自 FriendListScreen.tsx 的樣式
+const styles = StyleSheet.create({
+  // 稱號/徽章外層容器 (取代 topBarContainer 的部分功能)
+  titleBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start', // 讓內容靠左對齊
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+    marginLeft: 30, // ⭐ 修正: 向右移動 10 單位
+  },
+  
+  // 左側：稱號容器
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative', // 讓 dropdownMenu 可以絕對定位
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: BAR_BACKGROUND_COLOR, 
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#000',
+    flexShrink: 1, // 允許收縮
+    marginRight: 10,
+  },
+  
+  titleText: {
+    fontSize: 16,
+    color: PRIMARY_TEXT_COLOR,
+  },
+  
+  titleTextBold: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: PRIMARY_TEXT_COLOR,
+  },
+  
+  dropdownToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  
+  dropdownArrow: {
+    fontSize: 12,
+    marginLeft: 3,
+    color: PRIMARY_TEXT_COLOR,
+  },
+
+  // 絕對定位的下拉選單
+  dropdownMenu: {
+    position: 'absolute',
+    // top 和 left 需要根據實際情況微調，確保對齊。
+    top: 35, 
+    left: 0,
+    backgroundColor: '#fff',
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    zIndex: 10,
+    minWidth: 150,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  
+  dropdownItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  
+  dropdownItemText: {
+    fontSize: 16,
+    color: PRIMARY_TEXT_COLOR,
+  },
+
+  // 右側：徽章容器
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: BAR_BACKGROUND_COLOR, 
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#000',
+    marginLeft: 'auto', 
+  },
+  
+  badgeIcon: {
+    fontSize: 20,
+    marginRight: 5,
+  },
+  
+  badgeCount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: PRIMARY_TEXT_COLOR,
+  },
+});
