@@ -63,15 +63,6 @@ async def startup():
 
     # create table
     async with app.state.db_pool.acquire() as conn:
-        # items
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS items (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                done BOOLEAN DEFAULT FALSE
-            );
-        """)
-
         # users
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -169,31 +160,6 @@ async def get_conn():
 @app.get("/")
 async def root():
     return {"message": "Backend is running!"}
-
-@app.get("/db-test")
-async def db_test():
-    try:
-        async with app.state.db_pool.acquire() as conn:
-            rows = await conn.fetch("SELECT 1;")
-            return {"db": "connected", "result": rows}
-    except Exception as e:
-        return {"db": "failed", "error": str(e)}
-
-@app.get("/items")
-async def get_items():
-    async with app.state.db_pool.acquire() as conn:
-        rows = await conn.fetch("SELECT * FROM items ORDER BY id")
-        return [dict(row) for row in rows]
-
-@app.post("/items")
-async def create_item(item: dict):
-    async with app.state.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "INSERT INTO items (title, done) VALUES ($1, $2) RETURNING *",
-            item["title"],
-            item["done"]
-        )
-        return dict(row)
 
 # 💡 新增：處理 /api/v1/friends/status 的路由
 @app.get("/api/v1/friends/status", response_model=List[FriendStatusResponse])
