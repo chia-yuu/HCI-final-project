@@ -35,6 +35,9 @@ class DeadlineItem(BaseModel):
     is_done: bool = False
     display_order: int = 1
 
+class UserRecordStatus(BaseModel):
+    title_name: str
+    badge_count: int
 # 💡 新增：好友狀態回應模型，用於 /api/v1/friends/status
 class FriendStatusResponse(BaseModel):
     friend_id: int
