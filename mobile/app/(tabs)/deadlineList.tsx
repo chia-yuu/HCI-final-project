@@ -1,5 +1,5 @@
 import React, { isValidElement, useEffect, useState, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, Dimensions, Animated, Easing } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Modal, TextInput, Dimensions, Pressable } from "react-native";
 import api from '../../api/api';
 import PageTemplate from '@/components/page-template';
 import DeadlineItem from "@/components/deadline-item";
@@ -8,6 +8,7 @@ import DraggableFlatList, { RenderItemParams } from "react-native-draggable-flat
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { useUser } from '../../context/UserContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface TodoItem {
   id: number;
@@ -25,6 +26,7 @@ export default function DeadlineListScreen() {
   const [deadlines, setDeadlines] = useState<TodoItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const [newTask, setNewTask] = useState("");
   const [newDate, setNewDate] = useState("");
   const [editItemid, setEditItemid] = useState(-1);
@@ -33,15 +35,6 @@ export default function DeadlineListScreen() {
   const { userId } = useUser();
 
   // === get deadlines from DB ===
-  // const fetchDeadlines = async () => {
-  //   try {
-  //     const response = await api.get('/deadlines/get-deadlines');
-  //     // const todos = response.data.filter((item: TodoItem) => !item.is_done);
-  //     setDeadlines(response.data);
-  //   } catch (error) {
-  //     console.error("fetchDeadlines() in deadlineList.tsx: 抓不到清單: ", error);
-  //   }
-  // };
     const fetchDeadlines = async () => {
     if (userId === null) return;
     try {
@@ -85,7 +78,7 @@ export default function DeadlineListScreen() {
   const onClickCheckBox = async (item: TodoItem) => {
     if (userId === null) return;
     try{
-      if(item.is_done){
+      if(!item.is_done){
         setShowConfetti(true);
         setTimeout(() => {
           setShowConfetti(false);
@@ -115,27 +108,6 @@ export default function DeadlineListScreen() {
     setShowAddModal(true);
   }
 
-  function is_valid_date(dateStr: string) {
-    if (!/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateStr)){
-      alert("日期格式應為YYYY-MM-DD");
-      return false;
-    }
-
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())){
-      alert("請輸入合法日期");
-      return false;
-    }
-
-    const [year, month, day] = dateStr.split("-").map(Number);
-
-    return (
-      date.getUTCFullYear() === year &&
-      date.getUTCMonth() + 1 === month &&
-      date.getUTCDate() === day
-    );
-  }
-
   // add item into db
   const submitNewDeadline = async () => {
     if (userId === null) return;
@@ -147,9 +119,6 @@ export default function DeadlineListScreen() {
       }
       if(!newDate.trim()){
         alert("請填寫截止日期！");
-        return;
-      }
-      if(!is_valid_date(newDate.trim())){
         return;
       }
 
@@ -197,9 +166,6 @@ export default function DeadlineListScreen() {
         alert("請填寫截止日期！");
         return;
       }
-      if(!is_valid_date(newDate.trim())){
-        return;
-      }
 
       const body = {
         user_id: userId,
@@ -223,12 +189,6 @@ export default function DeadlineListScreen() {
 
   // remove
   const onClickRemoveBox = async (item: TodoItem) => {
-    if (userId === null) return;
-    setShowConfetti(true);
-    setTimeout(() => {
-      setShowConfetti(false);
-    }, 4000);
- 
     await api.post("/deadlines/remove-item", {id: item.id, user_id: userId});
     fetchDeadlines();
   }
@@ -286,7 +246,37 @@ export default function DeadlineListScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
+
               <Text style={styles.modalTitle}>新增事項</Text>
+
+              <View style={styles.input_calander}>
+                <Pressable onPress={() => setShowPicker(true)}>
+                  <TextInput
+                    placeholder="選擇日期"
+                    value={newDate}
+                    editable={false}
+                  />
+                </Pressable>
+
+                {showPicker && (
+                  <DateTimePicker
+                    value={newDate ? new Date(newDate) : new Date()}
+                    mode="date"
+                    display="calendar"
+                    onChange={(event, selectedDate) => {
+                      setShowPicker(false);
+
+                      if (selectedDate) {
+                        const year = selectedDate.getFullYear();
+                        const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                        const day = String(selectedDate.getDate()).padStart(2, "0");
+
+                        setNewDate(`${year}-${month}-${day}`);
+                      }
+                    }}
+                  />
+                )}
+              </View>
 
               <TextInput
                 placeholder="輸入事項名稱"
@@ -295,17 +285,14 @@ export default function DeadlineListScreen() {
                 onChangeText={setNewTask}
               />
 
-              <TextInput
-                placeholder="輸入截止日期 (YYYY-MM-DD)"
-                style={[styles.input, {marginBottom: 15}]}
-                value={newDate}
-                onChangeText={setNewDate}
-              />
-
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: "#c2dfe3" }]}
-                  onPress={() => setShowAddModal(false)}
+                  onPress={() => {
+                    setShowAddModal(false);
+                    setNewDate("");
+                    setNewTask("");
+                  }}
                 >
                   <Text style={styles.btnText}>取消</Text>
                 </TouchableOpacity>
@@ -331,7 +318,35 @@ export default function DeadlineListScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>編輯事項</Text>
+              <Text style={styles.modalTitle}>編輯事項</Text> 
+              <View style={styles.input_calander}>
+                <Pressable onPress={() => setShowPicker(true)}>
+                  <TextInput
+                    placeholder="選擇日期"
+                    value={newDate}
+                    editable={false}
+                  />
+                </Pressable>
+
+                {showPicker && (
+                  <DateTimePicker
+                    value={newDate ? new Date(newDate) : new Date()}
+                    mode="date"
+                    display="calendar"
+                    onChange={(event, selectedDate) => {
+                      setShowPicker(false);
+
+                      if (selectedDate) {
+                        const year = selectedDate.getFullYear();
+                        const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                        const day = String(selectedDate.getDate()).padStart(2, "0");
+
+                        setNewDate(`${year}-${month}-${day}`);
+                      }
+                    }}
+                  />
+                )}
+              </View>
 
               <TextInput
                 placeholder={newTask}
@@ -340,17 +355,14 @@ export default function DeadlineListScreen() {
                 onChangeText={setNewTask}
               />
 
-              <TextInput
-                placeholder={newDate}
-                style={[styles.input, {marginBottom: 15}]}
-                value={newDate}
-                onChangeText={setNewDate}
-              />
-
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, { backgroundColor: "#c2dfe3" }]}
-                  onPress={() => setShowEditModal(false)}
+                  onPress={() => {
+                    setShowEditModal(false);
+                    setNewDate("");
+                    setNewTask("");
+                  }}
                 >
                   <Text style={styles.btnText}>取消</Text>
                 </TouchableOpacity>
@@ -420,6 +432,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ccc",
     padding: 10,
+    borderRadius: 8,
+    margin: 15,
+    backgroundColor: "#fff"
+  },
+  input_calander: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    paddingHorizontal: 4,
     borderRadius: 8,
     marginTop: 15,
     backgroundColor: "#fff"
