@@ -3,6 +3,17 @@ import { ScrollView, View, Image, Dimensions, TouchableOpacity, Modal, Alert, St
 import PageTemplate from '@/components/page-template';
 import { ThemedText } from '@/components/themed-text';
 import { LineChart, BarChart } from 'react-native-chart-kit';
+import api from '../../api/api'; // ⭐ 引入 API 模組
+import { useFocusEffect } from '@react-navigation/native'; // 引入 useFocusEffect
+
+// ----------------------------------------------------
+// ⭐ 新增：後端 API 資料介面
+// ----------------------------------------------------
+interface UserRecordStatus {
+  title_name: string;
+  badge_count: number;
+}
+// ----------------------------------------------------
 
 // 假設的稱號資料
 const AVAILABLE_TITLES = [
@@ -20,13 +31,13 @@ const BAR_BACKGROUND_COLOR = '#d1d5db'; // 來自 FriendListScreen 的背景色
 // ⭐ 模擬資料 (MOCK DATA)
 // ----------------------------------------------------
 const MOCK_STATUS_DATA = {
-    titleName: AVAILABLE_TITLES[1].name, // 預設為 '閱讀專家'
-    badgeCount: 15, 
+    titleName: AVAILABLE_TITLES[1].name, // 預設為 '閱讀專家'
+    badgeCount: 15, 
 };
 
 const MOCK_WEEKLY_DATA = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    data: [6.5, 4.8, 7.5, 8.5, 5.0, 6.5, 7.0], // 模擬每天專注時長 (小時)
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    data: [6.5, 4.8, 7.5, 8.5, 5.0, 6.5, 7.0], // 模擬每天專注時長 (小時)
 };
 // ----------------------------------------------------
 
@@ -46,24 +57,47 @@ export default function MyRecordScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   // ----------------------------------------------------
-  // ⭐ 2. 資料獲取邏輯 (使用模擬資料取代後端呼叫)
+  // ⭐ 2. 資料獲取邏輯 (使用 API 呼叫)
   // ----------------------------------------------------
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // 使用 useFocusEffect 確保每次進入頁面都重新載入
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchData();
+    }, [])
+  );
 
   const fetchData = async () => {
     setIsLoading(true);
-    // 模擬網路延遲
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
 
+    // ------------------------------------------------
+    // ⭐ 抓取用戶稱號和徽章數 (API 呼叫)
+    // ------------------------------------------------
     try {
-        // 使用模擬資料設定使用者狀態
-        setTitleName(MOCK_STATUS_DATA.titleName);
-        setBadgeCount(MOCK_STATUS_DATA.badgeCount);
+        const user_id = 1; // 假設用戶 ID 為 1
+        // API 呼叫路徑：/api/v1/user/record_status
+        const statusResponse = await api.get<UserRecordStatus>(`/api/v1/user/record_status?user_id=${user_id}`);
+        
+        // 成功，使用 API 傳回的資料
+        console.log("API 成功回傳資料:", statusResponse.data);
+        setTitleName(statusResponse.data.title_name);
+        setBadgeCount(statusResponse.data.badge_count);
 
-        // 使用模擬資料設定週專注紀錄
-        const chartColors = [
+    } catch (error) {
+      console.error("API 呼叫失敗，使用模擬資料:", error);
+      // API 失敗，退回使用模擬資料
+      setTitleName(MOCK_STATUS_DATA.titleName);
+      setBadgeCount(MOCK_STATUS_DATA.badgeCount);
+    }
+    
+    // ------------------------------------------------
+    // 抓取週專注紀錄 (保持使用模擬資料)
+    // ------------------------------------------------
+    try {
+        // 這裡可以插入抓取週專注紀錄的 API 呼叫 (例如 /api/v1/user/weekly_focus_time)
+        // const weeklyResponse = await api.get<WeeklyFocusData>(...);
+
+        // ⭐ 保持使用模擬資料設定週專注紀錄
+        const chartColors = [
           (opacity = 1) => `rgba(0, 150, 136, ${opacity})`, 
           (opacity = 1) => `rgba(255, 87, 34, ${opacity})`, 
           (opacity = 1) => `rgba(103, 58, 183, ${opacity})`, 
@@ -80,10 +114,10 @@ export default function MyRecordScreen() {
             colors: chartColors.slice(0, MOCK_WEEKLY_DATA.data.length),
           }],
         });
-
-    } catch (error) {
-      console.error("Error setting mock data:", error);
-    } finally {
+    } catch (error) {
+        // 處理週數據抓取錯誤 (如果有的話)
+        console.error("Error fetching weekly data:", error);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -105,6 +139,7 @@ export default function MyRecordScreen() {
           text: "確認更換", 
           onPress: () => {
             setTitleName(newTitle);
+            // ⭐ 此處應新增 API 呼叫以將新稱號存入後端
             console.log(`稱號已更換為: ${newTitle}`);
           }
         }
@@ -151,8 +186,8 @@ export default function MyRecordScreen() {
     <PageTemplate title="我的紀錄" selectedTab="record">
       <ScrollView style={{ paddingHorizontal: 20, paddingBottom: 40, backgroundColor: PAGE_BACKGROUND_COLOR }}>
 
-        {/* 修正 1: 外層 Wrapper，整體向左移 50 單位 */}
-        <View style={{ marginLeft: -50 }}>
+        {/* 修正 1: 外層 Wrapper，整體向左移 50 單位 */}
+        <View style={{ marginLeft: -50 }}>
 
           {/* ---------------------------------------------------- */}
           {/* ⭐ 修正 2: 使用 FriendList 的樣式重構 Title & Badge 區塊 */}
@@ -201,7 +236,7 @@ export default function MyRecordScreen() {
               marginTop: 10, 
               fontSize: 20, 
               color: PRIMARY_TEXT_COLOR,
-              fontWeight: 'bold',
+              fontWeight: 'bold',
             }}
           >
             每日專注時長
@@ -240,7 +275,7 @@ export default function MyRecordScreen() {
               marginTop: 20, 
               fontSize: 18, 
               color: PRIMARY_TEXT_COLOR,
-              fontWeight: 'bold',
+              fontWeight: 'bold',
             }}
           >
             專注時間
@@ -273,7 +308,7 @@ export default function MyRecordScreen() {
               marginTop: 20, 
               fontSize: 18, 
               color: PRIMARY_TEXT_COLOR,
-              fontWeight: 'bold',
+              fontWeight: 'bold',
             }}
           >
             今日回顧
@@ -295,7 +330,7 @@ export default function MyRecordScreen() {
               style={{ width: screenWidth - 64, height: 120, borderRadius: 8 }}
             />
           </View>
-        </View> {/* End of Wrapper View (marginLeft: -50) */}
+        </View> {/* End of Wrapper View (marginLeft: -50) */}
       </ScrollView>
     </PageTemplate>
   );
