@@ -487,3 +487,13 @@ async def get_recent_picture(user_id: int):
         
         # 返回 Base64 URI 格式，方便前端 Image 元件直接使用
         return {"image_data": f"data:image/jpeg;base64,{encoded_image}"}
+@app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
+async def get_user_record_status(user_id: int = Query(1)):
+    """
+    API 1: 獲取用戶的稱號和徽章計數 (寫死資料)。
+    """
+    # 寫死資料：用戶稱號和徽章數
+    return UserRecordStatus(
+        title_name="時光旅人 (來自 FastAPI)",
+        badge_count=18
+    )
