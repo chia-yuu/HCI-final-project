@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   Alert,
+  FlatList,
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import api from '../../api/api';
@@ -85,25 +86,17 @@ interface FriendStatusAPIResponse {
   current_timer: string | null; 
 }
 
-interface UserData {
-  title: string;
-  badgeCount: number;
-}
+// 💡 刪除 UserData 介面，因為不再需要頭銜和徽章計數
 
 const fetchFriendStatuses = async (friendIds: number[]): Promise<FriendStatusAPIResponse[]> => {
     
     const idsString = friendIds.join(',');
     
     try {
-        // console.log(`[API 呼叫] 請求網址: ${API_URL}`);
-        
         const response = await api.get("/api/v1/friends/status", {
           params: { ids: idsString }
         });
         const data = response.data;
-        
-        // console.log("[API 檢查] 從後端接收到的好友狀態資料:");
-        // console.log(data); 
         
         if (!Array.isArray(data)) {
              console.error("API 返回的資料格式不正確 (不是陣列)。");
@@ -127,31 +120,17 @@ const fetchFriendStatuses = async (friendIds: number[]): Promise<FriendStatusAPI
 
 
 export default function FriendListScreen() {
-  
   const hardcodedFriendIds = [10, 11, 12, 13, 14, 15]; 
   
   const [friendsList, setFriendsList] = useState<FriendStatusAPIResponse[]>([]);
   
-  const [userData, setUserData] = useState<UserData>({
-    title: '專注新人', 
-    badgeCount: 16,     
-  });
+  // 💡 刪除 userData 和相關狀態
   
-  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-
-  const dropdownOptions = [
-    '專注新人',
-    '學習狂人',
-    '時間管理大師',
-  ];
-
   useEffect(() => {
     const loadStatuses = async () => {
       try {
         const apiData = await fetchFriendStatuses(hardcodedFriendIds); 
-        
         setFriendsList(apiData); 
-        
       } catch (error) {
         console.error("主要狀態載入流程發生錯誤:", error);
       }
@@ -165,10 +144,7 @@ export default function FriendListScreen() {
   const [targetFriendId, setTargetFriendId] = useState<number | null>(null); 
   const [message, setMessage] = useState(''); 
 
-  const handleTitleSelect = (newTitle: string) => {
-    setUserData({ ...userData, title: newTitle });
-    setIsDropdownVisible(false);
-  };
+  // 💡 刪除 handleTitleSelect 函式
   
   const handleReminderPress = (friendName: string, friendId: number) => {
     setTargetFriend(friendName);
@@ -203,8 +179,42 @@ export default function FriendListScreen() {
         return 'relaxing';
     }
   };
+  
+  const renderFriendItem = ({ item }: { item: FriendStatusAPIResponse }) => {
+      const currentStatusDisplay = getDisplayStatus(item); 
+      const isRelaxing = currentStatusDisplay === 'relaxing';
+
+      return (
+        <View
+          key={item.friend_id} 
+          style={[
+            styles.row,
+            styles.listItemMargin, 
+          ]}
+        >
+          <View style={[styles.fixedBox, styles.nameBox]}>
+            <Text style={styles.nameText} numberOfLines={1}>
+              {item.name} 
+            </Text>
+          </View>
+
+          <View style={[styles.fixedBox, styles.statusBox]}>
+            <Text style={styles.statusText} numberOfLines={1}>
+              {currentStatusDisplay}
+            </Text>
+          </View>
+
+          {isRelaxing && (
+            <TouchableOpacity onPress={() => handleReminderPress(item.name, item.friend_id)}>
+              <Text style={styles.emoji}>🔔</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      );
+  }
 
   return (
+    // 💡 標題保持在 PageTemplate 上方
     <PageTemplate title="好友列表" selectedTab="friend">
       <ReminderModal 
           visible={modalVisible}
@@ -215,213 +225,40 @@ export default function FriendListScreen() {
           setMessage={setMessage}
       />
       
-      {/* 頂部 Bar 容器 */}
-      <View style={styles.topBarContainer}>
-        
-        {/* 左側：加好友按鈕 */}
-        <TouchableOpacity 
-          style={styles.iconButton}
-          onPress={() => Alert.alert('加好友', '點擊了加好友圖標！')}
-        >
-          <Text style={styles.iconText}>👤+</Text> 
-        </TouchableOpacity>
-        
-        {/* 中間：頭銜/可下拉選單 */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>title:</Text>
-          <TouchableOpacity 
-            onPress={() => setIsDropdownVisible(!isDropdownVisible)}
-            style={styles.dropdownToggle}
-          >
-            <Text style={styles.titleTextBold}>{userData.title}</Text>
-            <Text style={styles.dropdownArrow}> ▼</Text> 
-          </TouchableOpacity>
-          
-          {/* 渲染下拉選單 */}
-          {isDropdownVisible && (
-            <View style={styles.dropdownMenu}>
-              {dropdownOptions.map((title, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.dropdownItem}
-                  onPress={() => handleTitleSelect(title)}
-                >
-                  <Text style={styles.dropdownItemText}>{title}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+      {/* 💡 移除頂部 Bar 容器 <View style={styles.topBarContainer}> */}
 
-        {/* 右側：好寶寶徽章 */}
-        <View style={styles.badgeContainer}>
-          <Text style={styles.badgeIcon}>🏅</Text> 
-          <Text style={styles.badgeCount}>X{userData.badgeCount}</Text>
-        </View>
-        
-      </View>
-
-      {/* 列表內容開始 (已調整位置) */}
-      <View style={styles.container}>
-        {friendsList.length === 0 && <Text style={styles.loadingText}>好友列表載入中...</Text>}
-        {friendsList.map((f) => {
-          
-          const currentStatusDisplay = getDisplayStatus(f); 
-          const isRelaxing = currentStatusDisplay === 'relaxing';
-
-          return (
-            <View
-              key={f.friend_id} 
-              style={[
-                styles.row,
-              ]}
-            >
-              <View style={[styles.fixedBox, styles.nameBox]}>
-                <Text style={styles.nameText} numberOfLines={1}>
-                  {f.name} 
-                </Text>
-              </View>
-
-              <View style={[styles.fixedBox, styles.statusBox]}>
-                <Text style={styles.statusText} numberOfLines={1}>
-                  {currentStatusDisplay}
-                </Text>
-              </View>
-
-              {isRelaxing && (
-                <TouchableOpacity onPress={() => handleReminderPress(f.name, f.friend_id)}>
-                  <Text style={styles.emoji}>🔔</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          );
-        })}
-      </View>
+      {/* 列表內容開始：使用 FlatList 實現捲動 */}
+      <FlatList
+        data={friendsList}
+        renderItem={renderFriendItem}
+        keyExtractor={(item) => item.friend_id.toString()}
+        // 💡 調整 contentContainerStyle
+        contentContainerStyle={styles.listContentContainer} 
+        ListEmptyComponent={() => (
+          <Text style={styles.loadingText}>好友列表載入中...</Text>
+        )}
+      />
     </PageTemplate>
   );
 }
 
 const styles = StyleSheet.create({
-  // 💡 頂部 Bar 樣式
-  topBarContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    width: '100%',
+  // 💡 刪除所有頂部 Bar 樣式 (topBarContainer, iconButton, titleContainer, badgeContainer 等)
+
+  // --- 列表內容樣式 (為 FlatList 調整) ---
+  listContentContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 10, 
-    backgroundColor: '#fff', 
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  
-  iconButton: {
-    width: 45,
-    height: 45,
-    borderRadius: 18,
-    backgroundColor: '#d1d5db',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#000',
-    transform: [{ translateY: 2 }],
-  },
-  iconText: {
-    fontSize: 25,
-    color: '#000',
-    transform: [{ translateY: 6}],
-  },
-  
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    position: 'relative', 
-    flex: 1, 
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: '#d1d5db', 
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  titleText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  titleTextBold: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  dropdownToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 5,
-  },
-  dropdownArrow: {
-    fontSize: 12,
-    marginLeft: 3,
-  },
-
-  dropdownMenu: {
-    position: 'absolute',
-    top: 35, 
-    left: 40,
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    zIndex: 10,
-    minWidth: 150,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  dropdownItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  dropdownItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-
-  badgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    backgroundColor: '#d1d5db', 
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#000',
-  },
-  badgeIcon: {
-    fontSize: 20,
-    marginRight: 5,
-  },
-  badgeCount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-
-  // --- 列表內容樣式 (已修改: marginTop: 0) ---
-  container: {
-    marginTop: 70, // <--- 讓清單緊貼在 TopBar 下方
-    width: '100%',
-    paddingHorizontal: 16,
-    gap: 16,
+    paddingTop: 0, // 💡 設為 0，讓列表緊貼 PageTemplate 內容區的頂部
+    paddingBottom: 20,
   },
   loadingText: {
     textAlign: 'center',
     fontSize: 16,
     color: '#666',
     marginTop: 20,
+  },
+  listItemMargin: {
+    marginBottom: 16, 
   },
   row: {
     flexDirection: 'row',
