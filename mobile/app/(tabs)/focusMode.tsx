@@ -4,6 +4,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import PageTemplate from '@/components/page-template';
 import { useFocus } from '../../context/FocusContext';
 import api from '../../api/api';
+import { router } from 'expo-router';
+import { useUser } from '../../context/UserContext';
 
 interface TodoItem {
   id: number;
@@ -19,16 +21,19 @@ export default function FocusModeScreen() {
   // modalType: 'pause' (休息) | 'end' (結束)
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalType, setModalType] = useState<'pause' | 'end'>('pause');
-
+  const { userId } = useUser();
   useFocusEffect(
     React.useCallback(() => {
       fetchDeadlines();
-    }, [])
+    }, [userId])
   );
 
   const fetchDeadlines = async () => {
-    try {
-      const response = await api.get('/deadlines');
+    if (userId === null) return;
+  try {
+      const response = await api.get('/deadlines', {
+        params: { user_id: userId } //修正：傳遞 user_id 參數
+      });
       const todos = response.data.filter((item: TodoItem) => !item.is_done).slice(0, 3);
       setDeadlines(todos);
     } catch (error) {
@@ -61,10 +66,25 @@ export default function FocusModeScreen() {
   const handleContinueFocus = () => setShowConfirmModal(false);
 
   // 確認要走了 
-  const handleConfirmAction = () => {
-    setShowConfirmModal(false);
-    stopFocus(modalType); 
-  };
+  // const handleConfirmAction = () => {
+  //   setShowConfirmModal(false);
+  //   stopFocus(modalType); 
+  // };
+const handleConfirmAction = async () => { // 💡 必須改為 async
+  setShowConfirmModal(false);
+
+  // 1. 停止計時並儲存數據 (假設 stopFocus 會回傳 true/false)
+  const savedSuccessfully = await stopFocus(modalType); 
+
+  // 2. 只有在按下「結束」並儲存成功時才導航到相機
+  if (modalType === 'end' && savedSuccessfully) {
+    // 💡 導航到相機畫面
+    router.push('/CameraScreen'); 
+  }
+  
+  // 3. 如果是「休息」，則回到主頁或停留在這裡
+  // 如果是暫停，且數據未成功儲存，則可能要給予錯誤提示
+};
  
   return (
     <PageTemplate title="專注模式" selectedTab="focus">

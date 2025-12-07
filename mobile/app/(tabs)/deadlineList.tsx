@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import DraggableFlatList, { RenderItemParams } from "react-native-draggable-flatlist";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { useUser } from '../../context/UserContext';
 
 interface TodoItem {
   id: number;
@@ -29,13 +30,24 @@ export default function DeadlineListScreen() {
   const [editItemid, setEditItemid] = useState(-1);
   const [editing, setEditing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const { userId } = useUser();
 
   // === get deadlines from DB ===
-  const fetchDeadlines = async () => {
+  // const fetchDeadlines = async () => {
+  //   try {
+  //     const response = await api.get('/deadlines/get-deadlines');
+  //     // const todos = response.data.filter((item: TodoItem) => !item.is_done);
+  //     setDeadlines(response.data);
+  //   } catch (error) {
+  //     console.error("fetchDeadlines() in deadlineList.tsx: 抓不到清單: ", error);
+  //   }
+  // };
+    const fetchDeadlines = async () => {
+    if (userId === null) return;
     try {
-      const response = await api.get('/deadlines/get-deadlines');
-      // const todos = response.data.filter((item: TodoItem) => !item.is_done);
-      setDeadlines(response.data);
+        // 💡 傳遞 user_id 作為查詢參數
+        const response = await api.get('/deadlines/get-deadlines', { params: { user_id: userId } });
+        setDeadlines(response.data);
     } catch (error) {
       console.error("fetchDeadlines() in deadlineList.tsx: 抓不到清單: ", error);
     }
@@ -54,7 +66,7 @@ export default function DeadlineListScreen() {
 
       const body = newData.map((item, index) => ({
         id: item.id,
-        user_id: item.user_id,
+        user_id: userId,
         display_order: index + 1,
       }));
 
@@ -71,6 +83,7 @@ export default function DeadlineListScreen() {
 
   // === click check box, modify is_done ===
   const onClickCheckBox = async (item: TodoItem) => {
+    if (userId === null) return;
     try{
       if(item.is_done){
         setShowConfetti(true);
@@ -85,11 +98,11 @@ export default function DeadlineListScreen() {
 
       const body = {
         id: item.id,
-        is_done: !item.is_done
+        is_done: !item.is_done,
+        user_id: userId
       }
       // console.log(body);
       await api.post("/deadlines/click-done", body);
-
       fetchDeadlines();
     } catch (error){
       console.error("onClickCheckBox() in deadlineList.tsx: ", error);
@@ -125,6 +138,7 @@ export default function DeadlineListScreen() {
 
   // add item into db
   const submitNewDeadline = async () => {
+    if (userId === null) return;
     try {
       // check input valid
       if (!newTask.trim()) {
@@ -140,6 +154,7 @@ export default function DeadlineListScreen() {
       }
 
       const body = {
+        user_id: userId,
         task: newTask,
         deadline_date: newDate,
         is_done: false,
@@ -187,6 +202,7 @@ export default function DeadlineListScreen() {
       }
 
       const body = {
+        user_id: userId,
         id: editItemid,
         task: newTask,
         deadline_date: newDate,
@@ -207,11 +223,13 @@ export default function DeadlineListScreen() {
 
   // remove
   const onClickRemoveBox = async (item: TodoItem) => {
+    if (userId === null) return;
     setShowConfetti(true);
     setTimeout(() => {
       setShowConfetti(false);
     }, 4000);
-    await api.post("/deadlines/remove-item", {id: item.id});
+ 
+    await api.post("/deadlines/remove-item", {id: item.id, user_id: userId});
     fetchDeadlines();
   }
 

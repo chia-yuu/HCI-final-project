@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useRef, useEffect } from 'r
 import { AppState, Alert, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import api from '../api/api'; 
+import { useUser } from './UserContext';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -29,7 +30,8 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
   const restStartTimeRef = useRef<number | null>(null);
 
   const startTimeRef = useRef<number | null>(null);
-  
+  const { userId } = useUser();
+
   // 通知權限
   useEffect(() => {
     async function requestPermissions() {
@@ -67,7 +69,8 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
     setIsFocusing(true);
 
     try {
-      await api.post('/user/status', { is_studying: true });
+// 💡 修正 2: 傳遞 user_id 給 /user/status
+    await api.post('/user/status', { is_studying: true, user_id: userId });
     } catch (e) { console.error("Status update failed", e); }
   };
 
@@ -108,18 +111,23 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
       // === [結束模式] ===
       setIsResting(false);
       restStartTimeRef.current = null;
-      
+     
       try {
-        await api.post('/user/status', { is_studying: false });
+        // 💡 修正 3a: 傳遞 user_id 給 /user/status
+        await api.post('/user/status', { is_studying: false, user_id: userId });
       } catch (e) { console.error("Status update failed", e); }
     }
 
-    // 存檔
+
+// 存檔
     try {
+      // 💡 修正 3b: 傳遞 user_id 給 /focus/save
       const response = await api.post('/focus/save', {
         duration_seconds: finalDuration,
-        note: mode === 'pause' ? "暫停休息" : "結束專注"
+        note: mode === 'pause' ? "暫停休息" : "結束專注",
+        user_id: userId // 💡 關鍵修正
       });
+
 
       const data = response.data;
       let msg = `此次專注：${data.minutes} 分鐘`;
