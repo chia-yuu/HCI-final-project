@@ -70,21 +70,29 @@ export default function FocusModeScreen() {
   //   setShowConfirmModal(false);
   //   stopFocus(modalType); 
   // };
-const handleConfirmAction = async () => { // 💡 必須改為 async
-  setShowConfirmModal(false);
+// const handleConfirmAction = async () => { // 💡 必須改為 async
+//   setShowConfirmModal(false);
 
-  // 1. 停止計時並儲存數據 (假設 stopFocus 會回傳 true/false)
-  const savedSuccessfully = await stopFocus(modalType); 
+//   // 1. 停止計時並儲存數據 (假設 stopFocus 會回傳 true/false)
+//   const savedSuccessfully = await stopFocus(modalType); 
 
-  // 2. 只有在按下「結束」並儲存成功時才導航到相機
-  if (modalType === 'end' && savedSuccessfully) {
-    // 💡 導航到相機畫面
-    router.push('/CameraScreen'); 
-  }
+//   // 2. 只有在按下「結束」並儲存成功時才導航到相機
+//   if (modalType === 'end' && savedSuccessfully) {
+//     // 💡 導航到相機畫面
+//     router.push('/CameraScreen'); 
+//   }
   
-  // 3. 如果是「休息」，則回到主頁或停留在這裡
-  // 如果是暫停，且數據未成功儲存，則可能要給予錯誤提示
-};
+//   // 3. 如果是「休息」，則回到主頁或停留在這裡
+//   // 如果是暫停，且數據未成功儲存，則可能要給予錯誤提示
+// };
+const handleConfirmAction = () => {
+    setShowConfirmModal(false);
+    // stopFocus(modalType); 
+    router.push({
+        pathname: "/camera",
+        params: { mode: modalType }
+    });
+  };
  
   return (
     <PageTemplate title="專注模式" selectedTab="focus">
@@ -105,7 +113,7 @@ const handleConfirmAction = async () => { // 💡 必須改為 async
                 <Text style={styles.deadlineTitle}>待辦事項提醒：</Text>
                 {deadlines.length === 0 ? <Text style={{color:'#999'}}>暫無待辦事項</Text> : 
                   deadlines.map(item => (
-                    <Text key={item.id} style={styles.deadlineText}>☐ {item.thing}</Text>
+                    <Text key={item.id} style={styles.deadlineText}>⏳ {item.thing}</Text>
                   ))
                 }
             </View>
@@ -132,7 +140,7 @@ const handleConfirmAction = async () => { // 💡 必須改為 async
                 <Text style={styles.deadlineTitle}>待辦事項：</Text>
                 {deadlines.length === 0 ? <Text style={{color:'#999'}}>暫無待辦事項</Text> : 
                   deadlines.map(item => (
-                    <Text key={item.id} style={styles.deadlineText}>☐ {item.thing}</Text>
+                    <Text key={item.id} style={styles.deadlineText}>⏳ {item.thing}</Text>
                   ))
                 }
             </View>

@@ -75,8 +75,8 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // === 停止/暫停專注 ===
-  const stopFocus = async (mode: 'pause' | 'end') => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+  const stopFocus = async (mode: 'pause' | 'end', photoBase64?: string) => {
+    //await Notifications.cancelAllScheduledNotificationsAsync();
 
     const finalDuration = startTimeRef.current 
       ? Math.floor((Date.now() - startTimeRef.current) / 1000) 
@@ -92,20 +92,35 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
       setIsResting(true);
       restStartTimeRef.current = Date.now();
 
-      //設定通知時間
-      const scheduleReminder = async (minutes: number) => {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "FocusMate 提醒 🐱",
-            body: `已經休息 ${minutes} 分鐘了喔，該回來了！`,
-            sound: true,
-          },
-          trigger: { seconds: minutes * 60 }, 
-        });
-      };
+      // //設定通知時間
+      // const scheduleReminder = async (minutes: number) => {
+      //   await Notifications.scheduleNotificationAsync({
+      //     content: {
+      //       title: "FocusMate 提醒 🐱",
+      //       body: `已經休息 ${minutes} 分鐘了喔，該回來了！`,
+      //       sound: true,
+      //     },
+      //     trigger: { seconds: minutes * 60 }, 
+      //   });
+      // };
 
 
-      await scheduleReminder(1);
+      // await scheduleReminder(1);
+
+      
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'FocusMate 提醒 🐱',
+        body: '已經休息 1 分鐘了喔，該回來了！',
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 60,       // ← 1 分鐘
+        repeats: false,
+      },
+    });
+
 
     } else {
       // === [結束模式] ===
@@ -122,12 +137,21 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
 // 存檔
     try {
       // 💡 修正 3b: 傳遞 user_id 給 /focus/save
+      const safeUserId = userId || 1;
       const response = await api.post('/focus/save', {
         duration_seconds: finalDuration,
         note: mode === 'pause' ? "暫停休息" : "結束專注",
         user_id: userId // 💡 關鍵修正
       });
 
+      if (photoBase64) {
+        console.log("正在上傳照片...");
+        await api.post('/camera/upload', {
+          user_id: 1, // 預設 User
+          image_base64: photoBase64
+        });
+        console.log("照片上傳成功！");
+      }
 
       const data = response.data;
       let msg = `此次專注：${data.minutes} 分鐘`;
@@ -141,9 +165,19 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
          }
       }, 500);
 
-    } catch (error) {
-      console.error(error);
-      Alert.alert("錯誤", "存檔失敗");
+    } catch (error: any) {
+      // 顯示詳細錯誤資訊
+      if (error.response) {
+        // 後端有回應，但回傳錯誤代碼 (例如 422, 500)
+        console.error("後端錯誤:", error.response.status, error.response.data);
+        Alert.alert("存檔失敗", `伺服器拒絕: ${JSON.stringify(error.response.data)}`);
+      } else if (error.request) {
+        // 請求有發出去，但沒收到回應 (通常是網路問題)
+        console.error("網路錯誤:", error.message);
+        Alert.alert("存檔失敗", "網路連線逾時或照片太大");
+      } else {
+        console.error("程式錯誤:", error.message);
+      }
     }
   };
 

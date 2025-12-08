@@ -50,7 +50,10 @@ class PictureUpload(BaseModel):
     image_data: str          # Base64 編碼的圖片字串
     description: Optional[str] = None
 
-
+class PictureData(BaseModel):
+    user_id: int
+    image_base64: str
+    
 # DB basic setting
 @app.on_event("startup")
 async def startup():
@@ -92,7 +95,7 @@ async def startup():
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS new_friends (
                 user_id          INTEGER NOT NULL PRIMARY KEY,
-                friend_id_list   JSON    -- 儲存 JSON 格式的好友 ID 列表，例如: '[10, 11, 12, 13]',
+                friend_id_list   JSON,
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
         """)
@@ -472,46 +475,68 @@ async def remove_deadline(item: DeadlineItem):
 
 # === 圖片上傳 API (Camera Functionality) ===
 
-@app.post("/pictures/upload")
-async def upload_picture(picture: PictureUpload):
-    """
-    接收 Base64 編碼的圖片字串，並將其以 BYTEA 格式存入資料庫。
-    """
-    import base64
+# @app.post("/pictures/upload")
+# async def upload_picture(picture: PictureUpload):
+#     """
+#     接收 Base64 編碼的圖片字串，並將其以 BYTEA 格式存入資料庫。
+#     """
+#     import base64
     
-    if not picture.image_data:
-        raise HTTPException(status_code=400, detail="圖片數據不能為空")
+#     if not picture.image_data:
+#         raise HTTPException(status_code=400, detail="圖片數據不能為空")
     
-    try:
-        # 處理並移除 Base64 字串可能有的前綴 (如: 'data:image/jpeg;base64,')
-        if ";" in picture.image_data:
-            _, encoded_data = picture.image_data.split(",", 1)
-        else:
-            encoded_data = picture.image_data
+#     try:
+#         # 處理並移除 Base64 字串可能有的前綴 (如: 'data:image/jpeg;base64,')
+#         if ";" in picture.image_data:
+#             _, encoded_data = picture.image_data.split(",", 1)
+#         else:
+#             encoded_data = picture.image_data
             
-        # 將 Base64 解碼為二進位數據 (bytes)
-        image_bytes = base64.b64decode(encoded_data)
+#         # 將 Base64 解碼為二進位數據 (bytes)
+#         image_bytes = base64.b64decode(encoded_data)
         
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"圖片解碼失敗: {e}")
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail=f"圖片解碼失敗: {e}")
 
-    async with app.state.db_pool.acquire() as conn:
-        try:
-            # 將二進位數據存入 BYTEA 欄位
-            row = await conn.fetchrow(
-                """
-                INSERT INTO pictures (user_id, img)
-                VALUES ($1, $2)
-                RETURNING id
-                """,
-                picture.user_id, image_bytes
-            )
-            return {"status": "success", "picture_id": row["id"]}
-        except Exception as e:
-            # 捕獲資料庫錯誤，返回 500
-            raise HTTPException(status_code=500, detail=f"資料庫儲存失敗: {e}")
+#     async with app.state.db_pool.acquire() as conn:
+#         try:
+#             # 將二進位數據存入 BYTEA 欄位
+#             row = await conn.fetchrow(
+#                 """
+#                 INSERT INTO pictures (user_id, img)
+#                 VALUES ($1, $2)
+#                 RETURNING id
+#                 """,
+#                 picture.user_id, image_bytes
+#             )
+#             return {"status": "success", "picture_id": row["id"]}
+#         except Exception as e:
+#             # 捕獲資料庫錯誤，返回 500
+#             raise HTTPException(status_code=500, detail=f"資料庫儲存失敗: {e}")
             
 # 💡 [新增] 獲取最新圖片 API (用於回顧頁面)
+
+@app.post("/camera/upload")
+async def upload_picture(data: PictureData):
+    async with app.state.db_pool.acquire() as conn:
+        try:
+            img_str = data.image_base64
+            if "," in img_str:
+                img_str = img_str.split(",")[1]
+            
+            img_bytes = base64.b64decode(img_str)
+
+            await conn.execute("""
+                INSERT INTO pictures (user_id, img)
+                VALUES ($1, $2)
+            """, data.user_id, img_bytes)
+            
+            print(f"User {data.user_id} 上傳照片成功，大小: {len(img_bytes)} bytes")
+            return {"status": "success", "message": "Photo saved!"}
+        except Exception as e:
+            print(f"上傳失敗: {str(e)}")
+            return {"status": "error", "message": str(e)}
+        
 @app.get("/pictures/recent/{user_id}")
 async def get_recent_picture(user_id: int):
     """
