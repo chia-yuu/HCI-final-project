@@ -88,6 +88,15 @@ async def startup():
             );
         """)
 
+        # new friends
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS new_friends (
+                user_id          INTEGER NOT NULL PRIMARY KEY,
+                friend_id_list   JSON    -- 儲存 JSON 格式的好友 ID 列表，例如: '[10, 11, 12, 13]',
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+            );
+        """)
+
         # deadlines
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS deadlines (
@@ -210,6 +219,41 @@ async def get_friends_status(ids: str = Query(..., description="好友 User ID �
             ))
             
         return results
+
+# === 好友列表功能 ===
+
+@app.get("/api/v1/new-friends/{user_id}")
+async def get_new_friend_list(user_id: int):
+    """
+    透過 user_id 查詢 new_friends 表格，獲取好友 ID 列表。
+    """
+    async with app.state.db_pool.acquire() as conn:
+        try:
+            # 1. 查詢該 user_id 的 friend_id_list 欄位
+            row = await conn.fetchrow("""
+                SELECT friend_id_list 
+                FROM new_friends 
+                WHERE user_id = $1
+            """, user_id)
+            
+            if not row or row["friend_id_list"] is None:
+                # 如果找不到該用戶或 friend_id_list 為 NULL，返回空列表
+                return {"user_id": user_id, "friend_ids": []}
+
+            # 2. friend_id_list 是一個 JSON 欄位，asyncpg 通常會將其讀取為 Python 列表
+            friend_id_list = row["friend_id_list"]
+            
+            # 確保返回的是一個列表，以便前端處理
+            if isinstance(friend_id_list, list):
+                return {"user_id": user_id, "friend_ids": friend_id_list}
+            else:
+                # 處理資料庫中 JSON 格式錯誤或非預期格式的情況
+                print(f"Warning: friend_id_list for user {user_id} is not a list: {friend_id_list}")
+                return {"user_id": user_id, "friend_ids": []}
+
+        except Exception as e:
+            # 捕獲資料庫錯誤
+            raise HTTPException(status_code=500, detail=f"資料庫查詢失敗: {e}")
 
 # === focus mode的功能(by sandra) ===
 
