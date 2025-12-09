@@ -150,6 +150,19 @@ export default function FriendListScreen() {
   const { userId } = useUser();
   const [friendsList, setFriendsList] = useState<FriendStatusAPIResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // [新增] 儲存自己的徽章數量
+  const [myBadgeCount, setMyBadgeCount] = useState(0);
+
+  // [新增] 抓取自己徽章的函式
+  const fetchMyBadge = async () => {
+    if (!userId) return;
+    try {
+      const response = await api.get(`/api/v1/user/record_status?user_id=${userId}`);
+      setMyBadgeCount(response.data.badge_count);
+    } catch (error) {
+      console.error("無法取得徽章數量:", error);
+    }
+  };
 
   // 載入資料的 Effect
   useEffect(() => {
@@ -181,6 +194,8 @@ export default function FriendListScreen() {
       } finally {
         if (isMounted) setIsLoading(false);
       }
+      // [新增] 順便載入自己的徽章
+      await fetchMyBadge();
     };
 
     loadStatuses();
@@ -194,20 +209,73 @@ export default function FriendListScreen() {
   const [message, setMessage] = useState(''); 
   
   const handleReminderPress = (friendName: string, friendId: number) => {
+    // [邏輯判斷] 檢查徽章是否足夠
+    if (myBadgeCount < 1) {
+        Alert.alert(
+            "徽章不足 😱", 
+            "你需要至少一枚好寶寶徽章才能傳送訊息！\n快去專注賺取徽章吧～",
+            [{ text: "好，我去努力" }]
+        );
+        return; // 直接結束，不開啟 Modal
+    }
+
+    // 若足夠，才執行原本的開啟視窗邏輯
     setTargetFriend(friendName);
     setTargetFriendId(friendId);
     setModalVisible(true);
     setMessage(''); 
   };
 
-  const handleSend = () => {
-    if (message.trim().length > 0) { 
-       console.log(`Sending to ID: ${targetFriendId} from User: ${userId}`);
-       setModalVisible(false); 
-       Alert.alert('傳送成功 🎉', `已成功提醒 ${targetFriend}！`, [{ text: '好的' }]);
-    } else {
-       Alert.alert('提示', '請輸入傳送訊息！'); 
-    }
+  // const handleSend = () => {
+  //   if (message.trim().length > 0) { 
+  //      console.log(`Sending to ID: ${targetFriendId} from User: ${userId}`);
+  //      setModalVisible(false); 
+  //      Alert.alert('傳送成功 🎉', `已成功提醒 ${targetFriend}！`, [{ text: '好的' }]);
+  //   } else {
+  //      Alert.alert('提示', '請輸入傳送訊息！'); 
+  //   }
+  // };
+  // 請將這段程式碼替換原本的 handleSend
+  const handleSend = async () => {
+      // 1. 防呆檢查：訊息不能為空
+      if (message.trim().length === 0) {
+          Alert.alert('提示', '請輸入傳送訊息！');
+          return;
+      }
+
+      // 2. 防呆檢查：確保 ID 存在
+      if (!userId || !targetFriendId) {
+          Alert.alert('錯誤', '系統錯誤：無法識別用戶或好友 ID');
+          return;
+      }
+
+      try {
+          console.log(`[API] 正在傳送訊息... 寄件人:${userId}, 收件人:${targetFriendId}, 內容:${message}`);
+
+          // 3. 呼叫後端 API
+          // 注意：這裡的 payload 欄位名稱必須跟後端 Pydantic model 一模一樣
+          const response = await api.post('/api/v1/messages', {
+              sender_id: userId,        // 對應後端 MessageCreate.sender_id
+              receiver_id: targetFriendId, // 對應後端 MessageCreate.receiver_id
+              content: message          // 對應後端 MessageCreate.content
+          });
+
+          console.log('[API] 傳送成功:', response.data);
+
+          // 4. 成功後的 UI 處理
+          setModalVisible(false); // 關閉 Modal
+          setMessage('');         // 清空輸入框，避免下次打開還有舊字
+          
+          Alert.alert(
+              '傳送成功 🎉', 
+              `已成功提醒 ${targetFriend}！\n(已消耗一枚好寶寶徽章)`, 
+              [{ text: '好的' }]
+          );
+
+      } catch (error) {
+          console.error("傳送訊息失敗:", error);
+          Alert.alert('傳送失敗', '伺服器忙線中或網路不穩，請稍後再試。');
+      }
   };
 
   const handleCancel = () => {

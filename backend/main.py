@@ -302,6 +302,40 @@ async def get_new_friend_list(user_id: int):
         except Exception as e:
             print(f"Database error: {e}") # 建議印出錯誤以便除錯
             raise HTTPException(status_code=500, detail=f"資料庫查詢失敗: {e}")
+        
+# === 訊息功能 ===
+class MessageCreate(BaseModel):
+    sender_id: int
+    receiver_id: int
+    content: str
+
+# 請確保後端有這個 API 接口
+# 2. 修改傳送訊息 API (加入餘額檢查防呆)
+@app.post("/api/v1/messages")
+async def send_message(msg: MessageCreate):
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            # A. 先查詢目前徽章數量
+            row = await conn.fetchrow("SELECT badge FROM users WHERE user_id = $1", msg.sender_id)
+            current_badge = row['badge'] if row and row['badge'] else 0
+
+            # B. 判斷餘額是否足夠
+            if current_badge < 1:
+                # 若不足，回傳 400 錯誤，停止交易
+                raise HTTPException(status_code=400, detail="徽章不足，無法傳送訊息")
+
+            # C. 扣除徽章
+            await conn.execute("""
+                UPDATE users SET badge = badge - 1 WHERE user_id = $1
+            """, msg.sender_id)
+
+            # D. 寫入訊息
+            await conn.execute("""
+                INSERT INTO messages (sender_id, receiver_id, content)
+                VALUES ($1, $2, $3)
+            """, msg.sender_id, msg.receiver_id, msg.content)
+
+    return {"status": "success", "message": "Message sent"}
 
 # === focus mode的功能(by sandra) ===
 
@@ -604,13 +638,31 @@ async def get_recent_picture(user_id: int):
         
         # 返回 Base64 URI 格式，方便前端 Image 元件直接使用
         return {"image_data": f"data:image/jpeg;base64,{encoded_image}"}
+# 改成下面不是寫死的看看(by芷翊)
+# @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
+# async def get_user_record_status(user_id: int = Query(1)):
+#     """
+#     API 1: 獲取用戶的稱號和徽章計數 (寫死資料)。
+#     """
+#     # 寫死資料：用戶稱號和徽章數
+#     return UserRecordStatus(
+#         title_name="時光旅人 (來自 FastAPI)",
+#         badge_count=18
+#     )
+
+# 1. 修改獲取用戶狀態的 API (讓它讀取真實 DB 數據)
 @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
 async def get_user_record_status(user_id: int = Query(1)):
-    """
-    API 1: 獲取用戶的稱號和徽章計數 (寫死資料)。
-    """
-    # 寫死資料：用戶稱號和徽章數
-    return UserRecordStatus(
-        title_name="時光旅人 (來自 FastAPI)",
-        badge_count=18
-    )
+    async with app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT title, badge FROM users WHERE user_id = $1
+        """, user_id)
+        
+        if not row:
+            # 如果找不到人，回傳預設值
+            return UserRecordStatus(title_name="新手", badge_count=0)
+
+        return UserRecordStatus(
+            title_name=row['title'] if row['title'] else "無稱號",
+            badge_count=row['badge'] if row['badge'] else 0
+        )
