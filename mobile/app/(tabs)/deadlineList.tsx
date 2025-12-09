@@ -33,6 +33,53 @@ export default function DeadlineListScreen() {
   const [editing, setEditing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const { userId } = useUser();
+  //  新增：暫存 Picker 選擇的日期，防止自動關閉
+  const [tempDate, setTempDate] = useState<Date>(new Date());
+
+  // // === Date Picker 處理函式 ===
+  // const handleDateChange = (event: any, selectedDate?: Date) => {
+  //   setShowPicker(false);
+  //   if (selectedDate) {
+  //     const year = selectedDate.getFullYear();
+  //     const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+  //     const day = String(selectedDate.getDate()).padStart(2, "0");
+  //     setNewDate(`${year}-${month}-${day}`);
+  //   }
+  // };
+
+// === Date Picker 處理函式 ===
+    const handleDateChange = (event: any, selectedDate?: Date) => {
+        //  關鍵：在 iOS 上，不應該在這裡直接關閉 Picker
+        // 而是將選擇的日期存入暫存狀態
+        
+        // 由於 DateTimePicker 在 iOS 上是 Modal (無法共用 Modal)，我們需要手動控制顯示
+        if (event.type === 'set' && selectedDate) {
+            setTempDate(selectedDate);
+        } else if (event.type === 'dismissed') {
+             // 如果用戶在 Android 上點擊了取消或在 iOS 上點擊了 Modal 外部
+             setShowPicker(false);
+        }
+        
+        // 為了讓 Picker 保持開啟直到點擊確認，我們只在 iOS 上使用 Modal 包裹。
+        // 這裡我們假設使用 Modal 包裹 Picker 的方式來控制顯示，所以這裡不需要關閉。
+    };
+    
+    // 新增：點擊「確認」後執行的函式
+    const confirmDate = () => {
+        const selectedDate = tempDate;
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+        const day = String(selectedDate.getDate()).padStart(2, "0");
+        
+        setNewDate(`${year}-${month}-${day}`);
+        setShowPicker(false); // 點擊確認後才關閉 Picker
+    };
+
+    // 新增：點擊「取消」後執行的函式
+    const cancelDate = () => {
+        setShowPicker(false);
+        // 如果是新增模式，可以考慮重置日期
+    };
 
   // === get deadlines from DB ===
     const fetchDeadlines = async () => {
@@ -105,6 +152,8 @@ export default function DeadlineListScreen() {
 
   // === add item ===
   const addItem = () => {
+    setNewDate(""); // 清空上次的日期
+    setNewTask(""); // 清空上次的任務
     setShowAddModal(true);
   }
 
@@ -246,40 +295,55 @@ export default function DeadlineListScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-
               <Text style={styles.modalTitle}>新增事項</Text>
-
-              <Pressable onPress={() => setShowPicker(true)} style={{width: "100%", marginLeft: -30}}>
-                <TextInput
-                  placeholder="選擇日期"
-                  value={newDate}
-                  editable={false}
-                  style={styles.input}
-                />
+                <Pressable 
+                    onPress={() => setShowPicker(true)} 
+                    style={[styles.input, styles.dateInputPressable, { margin: 15 }]} 
+                >
+                {/* 移除 TextInput，使用 Text 顯示日期 */}
+                  <Text style={newDate ? styles.dateText : styles.placeholderText}>
+                      {newDate || "請選擇截止日期"} 
+                  </Text>
               </Pressable>
 
               {showPicker && (
-                <DateTimePicker
-                  value={newDate ? new Date(newDate) : new Date()}
-                  mode="date"
-                  display="calendar"
-                  onChange={(event, selectedDate) => {
-                    setShowPicker(false);
-
-                    if (selectedDate) {
-                      const year = selectedDate.getFullYear();
-                      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
-                      const day = String(selectedDate.getDate()).padStart(2, "0");
-
-                      setNewDate(`${year}-${month}-${day}`);
-                    }
-                  }}
-                />
+                <Modal
+                  animationType="slide"
+                  transparent={true}
+                  visible={showPicker}
+                  onRequestClose={cancelDate}
+              >
+                  <View style={styles.pickerOverlay}> {/* 💡 使用一個新的樣式來覆蓋全螢幕 */}
+                      <View style={styles.pickerContainer}>
+                          
+                          {/* 顯示 DateTimePicker */}
+                          <DateTimePicker
+                              // 使用暫存日期作為值，避免選擇器跳動
+                              value={tempDate} 
+                              mode="date"
+                              display="spinner" 
+                              onChange={handleDateChange} 
+                          />
+                          
+                          {/* 模擬確認/取消按鈕 */}
+                          <View style={styles.pickerButtons}>
+                              <TouchableOpacity onPress={cancelDate} style={[styles.pickerButton, styles.cancelButton]}>
+                                  <Text style={styles.buttonText}>取消</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={confirmDate} style={[styles.pickerButton, styles.confirmButton]}>
+                                  <Text style={styles.buttonText}>確認</Text>
+                              </TouchableOpacity>
+                          </View>
+                          
+                      </View>
+                  </View>
+              </Modal>
               )}
 
               <TextInput
                 placeholder="輸入事項名稱"
                 style={styles.input}
+                placeholderTextColor="#999"
                 value={newTask}
                 onChangeText={setNewTask}
               />
@@ -318,32 +382,48 @@ export default function DeadlineListScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>編輯事項</Text> 
-              <Pressable onPress={() => setShowPicker(true)} style={{width: "100%", marginLeft: -30}}>
-                <TextInput
-                  placeholder="選擇日期"
-                  value={newDate}
-                  editable={false}
-                  style={styles.input}
-                />
+                <Pressable 
+                    onPress={() => setShowPicker(true)} 
+                    style={[styles.input, styles.dateInputPressable, { margin: 15 }]} 
+                >
+                  {/* 移除 TextInput，使用 Text 顯示日期 */}
+                    <Text style={newDate ? styles.dateText : styles.placeholderText}>
+                        {newDate || "請選擇截止日期"} 
+                    </Text>
               </Pressable>
 
               {showPicker && (
-                <DateTimePicker
-                  value={newDate ? new Date(newDate) : new Date()}
-                  mode="date"
-                  display="calendar"
-                  onChange={(event, selectedDate) => {
-                    setShowPicker(false);
-
-                    if (selectedDate) {
-                      const year = selectedDate.getFullYear();
-                      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
-                      const day = String(selectedDate.getDate()).padStart(2, "0");
-
-                      setNewDate(`${year}-${month}-${day}`);
-                    }
-                  }}
-                />
+                <Modal
+                  animationType="slide"
+                  transparent={true}
+                  visible={showPicker}
+                  onRequestClose={cancelDate}
+              >
+                  <View style={styles.pickerOverlay}> {/* 💡 使用一個新的樣式來覆蓋全螢幕 */}
+                      <View style={styles.pickerContainer}>
+                          
+                          {/* 顯示 DateTimePicker */}
+                          <DateTimePicker
+                              // 使用暫存日期作為值，避免選擇器跳動
+                              value={tempDate} 
+                              mode="date"
+                              display="spinner" 
+                              onChange={handleDateChange} 
+                          />
+                          
+                          {/* 模擬確認/取消按鈕 */}
+                          <View style={styles.pickerButtons}>
+                              <TouchableOpacity onPress={cancelDate} style={[styles.pickerButton, styles.cancelButton]}>
+                                  <Text style={styles.buttonText}>取消</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={confirmDate} style={[styles.pickerButton, styles.confirmButton]}>
+                                  <Text style={styles.buttonText}>確認</Text>
+                              </TouchableOpacity>
+                          </View>
+                          
+                      </View>
+                  </View>
+              </Modal>
               )}
 
               <TextInput
@@ -431,7 +511,7 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     padding: 10,
     borderRadius: 8,
-    margin: 15,
+    // margin: 15,
     backgroundColor: "#fff"
   },
   input_calander: {
@@ -480,5 +560,50 @@ const styles = StyleSheet.create({
   btnText: {
     fontWeight: 'bold',
     fontSize: 14
-  }
+  },
+  // 確保 dateInputPressable 具有輸入框的邊界和背景
+  dateInputPressable: {
+      justifyContent: 'center', // 垂直居中對齊文字
+      minHeight: 40, // 確保可點擊區域
+      paddingHorizontal: 10,
+  },
+  placeholderText: {
+      color: '#999', // 預設文字顏色
+  },
+  dateText: {
+      color: '#000', // 選擇日期後的文字顏色
+      fontSize: 14, // 保持與 input 內文字大小一致
+  },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end', // 讓 Picker 從底部彈出
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  pickerContainer: {
+      backgroundColor: 'white',
+      padding: 16,
+      borderTopLeftRadius: 10,
+      borderTopRightRadius: 10,
+  },
+  pickerButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingTop: 10,
+  },
+  pickerButton: {
+      padding: 10,
+      borderRadius: 5,
+      flex: 1,
+      marginHorizontal: 5,
+      alignItems: 'center',
+  },
+  cancelButton: {
+      backgroundColor: '#ccc',
+  },
+  confirmButton: {
+      backgroundColor: '#415a77',
+  },
+  buttonText: {
+      color: 'white',
+      fontWeight: 'bold'}
 });
