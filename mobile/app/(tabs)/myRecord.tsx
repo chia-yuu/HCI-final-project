@@ -3,8 +3,9 @@ import { ScrollView, View, Image, Dimensions, TouchableOpacity, Modal, Alert, St
 import PageTemplate from '@/components/page-template';
 import { ThemedText } from '@/components/themed-text';
 import { LineChart, BarChart } from 'react-native-chart-kit';
-import api from '../../api/api'; // ⭐ 引入 API 模組
+// import api from '../../api/api'; // ⭐ [移除] 移除 API 模組
 import { useFocusEffect } from '@react-navigation/native'; // 引入 useFocusEffect
+import { useUser } from '../../context/UserContext'; // 引入 useFocusEffect
 
 // ----------------------------------------------------
 // ⭐ 新增：後端 API 資料介面
@@ -16,11 +17,7 @@ interface UserRecordStatus {
 // ----------------------------------------------------
 
 // 假設的稱號資料
-const AVAILABLE_TITLES = [
-  { id: 'novice', name: '專注新人' },
-  { id: 'expert', name: '閱讀專家' },
-  { id: 'master', name: '時光大師' },
-];
+
 
 // ⭐ 顏色定義
 const PRIMARY_TEXT_COLOR = '#0D1B2A';
@@ -30,29 +27,65 @@ const BAR_BACKGROUND_COLOR = '#d1d5db'; // 來自 FriendListScreen 的背景色
 // ----------------------------------------------------
 // ⭐ 模擬資料 (MOCK DATA)
 // ----------------------------------------------------
-const MOCK_STATUS_DATA = {
-    titleName: AVAILABLE_TITLES[1].name, // 預設為 '閱讀專家'
-    badgeCount: 15, 
+interface ChartData {
+    labels: string[];
+    datasets: { data: number[] }[];
+}
+
+interface UserRecordData {
+    AVAILABLE_TITLES: Title[];
+    titleName: string;
+    badgeCount: number;
+    weeklyData: number[]; // Bar Chart 數據
+    focusTimeData: number[]; // Line Chart 數據
+    imageUri: string;
+}
+interface Title {
+    id: string;
+    name: string;
+}
+const MOCK_DATA: Record<number, UserRecordData> = {
+    // User 1: 高成就 (時光大師)
+    1: {
+        AVAILABLE_TITLES: [{ id: 'novice', name: '專注新人' },
+          { id: 'expert', name: '閱讀專家' },
+          { id: 'master', name: '時光大師' },],
+        titleName: '時光大師', 
+        badgeCount: 99, 
+        weeklyData: [6.5, 4.8, 7.5, 8.5, 5.0, 6.5, 7.0], 
+        focusTimeData: [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.5, 0.0],
+        imageUri: 'https://placekitten.com/400/300', // 範例圖片
+    },
+    // User 2: 低成就 (專注新人)
+    2: {
+        AVAILABLE_TITLES: [{ id: 'novice', name: '專注新人' },
+          { id: 'expert', name: '閱讀大師' },
+          { id: 'master', name: '內卷小丑' },],
+        titleName: '專注新人', 
+        badgeCount: 5, 
+        weeklyData: [2.1, 1.5, 3.0, 2.5, 1.8, 2.2, 3.1],
+        focusTimeData: [0.0, 0.2, 0.5, 0.8, 0.3, 0.1, 0.0, 0.0],
+        imageUri: 'https://placehold.co/400x300/F4D35E/000000/png', // 另一張範例圖片
+    },
 };
 
-const MOCK_WEEKLY_DATA = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    data: [6.5, 4.8, 7.5, 8.5, 5.0, 6.5, 7.0], // 模擬每天專注時長 (小時)
-};
+const DEFAULT_USER_DATA = MOCK_DATA[1];
 // ----------------------------------------------------
 
 export default function MyRecordScreen() {
   const screenWidth = Dimensions.get('window').width;
   // 讓圖表寬度與 ScrollView 的 padding 一致 (screenWidth - 2*20)
   const chartWidth = screenWidth - 40; 
-
+  const { userId } = useUser();
+  const currentUserId = userId || 1
   // ⭐ 1. 狀態：從模擬資料設定初始值
-  const [titleName, setTitleName] = useState(MOCK_STATUS_DATA.titleName); 
-  const [badgeCount, setBadgeCount] = useState(MOCK_STATUS_DATA.badgeCount); 
+  const [titleName, setTitleName] = useState(MOCK_DATA[currentUserId].titleName); 
+  const AVAILABLE_TITLES = MOCK_DATA[currentUserId].AVAILABLE_TITLES;
+  const [badgeCount, setBadgeCount] = useState(MOCK_DATA[currentUserId].badgeCount); 
   const [isTitleMenuVisible, setIsTitleMenuVisible] = useState(false);
   const [weeklyReadingData, setWeeklyReadingData] = useState({
-    labels: MOCK_WEEKLY_DATA.labels,
-    datasets: [{ data: MOCK_WEEKLY_DATA.data }],
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{ data: MOCK_DATA[currentUserId].weeklyData }],
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -83,10 +116,10 @@ export default function MyRecordScreen() {
         setBadgeCount(statusResponse.data.badge_count);
 
     } catch (error) {
-      console.error("API 呼叫失敗，使用模擬資料:", error);
+//       console.error("API 呼叫失敗，使用模擬資料:", error);
       // API 失敗，退回使用模擬資料
-      setTitleName(MOCK_STATUS_DATA.titleName);
-      setBadgeCount(MOCK_STATUS_DATA.badgeCount);
+      setTitleName(MOCK_DATA[currentUserId].titleName);
+      setBadgeCount(MOCK_DATA[currentUserId].badgeCount);
     }
     
     // ------------------------------------------------
@@ -108,15 +141,15 @@ export default function MyRecordScreen() {
         ];
 
         setWeeklyReadingData({
-          labels: MOCK_WEEKLY_DATA.labels,
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
           datasets: [{ 
-            data: MOCK_WEEKLY_DATA.data,
-            colors: chartColors.slice(0, MOCK_WEEKLY_DATA.data.length),
+            data: MOCK_DATA[currentUserId].weeklyData,
+            colors: chartColors.slice(0, MOCK_DATA[currentUserId].weeklyData.length),
           }],
         });
     } catch (error) {
         // 處理週數據抓取錯誤 (如果有的話)
-        console.error("Error fetching weekly data:", error);
+        // console.error("Error fetching weekly data:", error);
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +185,7 @@ export default function MyRecordScreen() {
     labels: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
     datasets: [
       {
-        data: [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.5, 0.0],
+        data: MOCK_DATA[currentUserId].focusTimeData,
         color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, 
         strokeWidth: 1.5,
       },
@@ -325,7 +358,7 @@ export default function MyRecordScreen() {
           >
             <Image
               source={{
-                uri: 'https://placekitten.com/400/300',
+                uri: MOCK_DATA[currentUserId].imageUri,
               }}
               style={{ width: screenWidth - 64, height: 120, borderRadius: 8 }}
             />
@@ -360,7 +393,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#000',
     flexShrink: 1, // 允許收縮
-    marginRight: 10,
+    marginRight: 20,
   },
   
   titleText: {
@@ -426,7 +459,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: '#000',
-    marginLeft: 'auto', 
+    marginLeft: 50, 
   },
   
   badgeIcon: {
