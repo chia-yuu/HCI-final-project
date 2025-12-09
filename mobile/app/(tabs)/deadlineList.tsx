@@ -249,34 +249,33 @@ export default function DeadlineListScreen() {
 
               <Text style={styles.modalTitle}>新增事項</Text>
 
-              <View style={styles.input_calander}>
-                <Pressable onPress={() => setShowPicker(true)}>
-                  <TextInput
-                    placeholder="選擇日期"
-                    value={newDate}
-                    editable={false}
-                  />
-                </Pressable>
+              <Pressable onPress={() => setShowPicker(true)} style={{width: "100%", marginLeft: -30}}>
+                <TextInput
+                  placeholder="選擇日期"
+                  value={newDate}
+                  editable={false}
+                  style={styles.input}
+                />
+              </Pressable>
 
-                {showPicker && (
-                  <DateTimePicker
-                    value={newDate ? new Date(newDate) : new Date()}
-                    mode="date"
-                    display="calendar"
-                    onChange={(event, selectedDate) => {
-                      setShowPicker(false);
+              {showPicker && (
+                <DateTimePicker
+                  value={newDate ? new Date(newDate) : new Date()}
+                  mode="date"
+                  display="calendar"
+                  onChange={(event, selectedDate) => {
+                    setShowPicker(false);
 
-                      if (selectedDate) {
-                        const year = selectedDate.getFullYear();
-                        const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
-                        const day = String(selectedDate.getDate()).padStart(2, "0");
+                    if (selectedDate) {
+                      const year = selectedDate.getFullYear();
+                      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                      const day = String(selectedDate.getDate()).padStart(2, "0");
 
-                        setNewDate(`${year}-${month}-${day}`);
-                      }
-                    }}
-                  />
-                )}
-              </View>
+                      setNewDate(`${year}-${month}-${day}`);
+                    }
+                  }}
+                />
+              )}
 
               <TextInput
                 placeholder="輸入事項名稱"
@@ -319,34 +318,33 @@ export default function DeadlineListScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>編輯事項</Text> 
-              <View style={styles.input_calander}>
-                <Pressable onPress={() => setShowPicker(true)}>
-                  <TextInput
-                    placeholder="選擇日期"
-                    value={newDate}
-                    editable={false}
-                  />
-                </Pressable>
+              <Pressable onPress={() => setShowPicker(true)} style={{width: "100%", marginLeft: -30}}>
+                <TextInput
+                  placeholder="選擇日期"
+                  value={newDate}
+                  editable={false}
+                  style={styles.input}
+                />
+              </Pressable>
 
-                {showPicker && (
-                  <DateTimePicker
-                    value={newDate ? new Date(newDate) : new Date()}
-                    mode="date"
-                    display="calendar"
-                    onChange={(event, selectedDate) => {
-                      setShowPicker(false);
+              {showPicker && (
+                <DateTimePicker
+                  value={newDate ? new Date(newDate) : new Date()}
+                  mode="date"
+                  display="calendar"
+                  onChange={(event, selectedDate) => {
+                    setShowPicker(false);
 
-                      if (selectedDate) {
-                        const year = selectedDate.getFullYear();
-                        const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
-                        const day = String(selectedDate.getDate()).padStart(2, "0");
+                    if (selectedDate) {
+                      const year = selectedDate.getFullYear();
+                      const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                      const day = String(selectedDate.getDate()).padStart(2, "0");
 
-                        setNewDate(`${year}-${month}-${day}`);
-                      }
-                    }}
-                  />
-                )}
-              </View>
+                      setNewDate(`${year}-${month}-${day}`);
+                    }
+                  }}
+                />
+              )}
 
               <TextInput
                 placeholder={newTask}
