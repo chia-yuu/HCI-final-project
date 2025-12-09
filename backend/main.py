@@ -50,6 +50,7 @@ class FriendStatusResponse(BaseModel):
 class PictureData(BaseModel):
     user_id: int
     image_base64: str
+    description: Optional[str] = "" 
     
 # DB basic setting
 @app.on_event("startup")
@@ -163,6 +164,7 @@ async def startup():
                 id      SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 img     BYTEA,
+                description TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
         """)
@@ -527,15 +529,38 @@ async def upload_picture(data: PictureData):
             img_bytes = base64.b64decode(img_str)
 
             await conn.execute("""
-                INSERT INTO pictures (user_id, img)
-                VALUES ($1, $2)
-            """, data.user_id, img_bytes)
+                INSERT INTO pictures (user_id, img, description)
+                VALUES ($1, $2, $3)
+            """, data.user_id, img_bytes, data.description)
             
             print(f"User {data.user_id} 上傳照片成功，大小: {len(img_bytes)} bytes")
             return {"status": "success", "message": "Photo saved!"}
         except Exception as e:
             print(f"上傳失敗: {str(e)}")
             return {"status": "error", "message": str(e)}
+
+@app.get("/pictures")
+async def get_pictures(user_id: int = 1):
+    async with app.state.db_pool.acquire() as conn:
+        # [修改] SELECT 加入 description
+        rows = await conn.fetch("""
+            SELECT id, img, description FROM pictures 
+            WHERE user_id = $1 
+            ORDER BY id DESC
+        """, user_id)
+        
+        results = []
+        for row in rows:
+            img_bytes = row['img']
+            if img_bytes:
+                img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+                results.append({
+                    "id": row['id'],
+                    "uri": f"data:image/jpg;base64,{img_base64}",
+                    "description": row['description'] # [新增] 回傳描述
+                })
+            
+        return results
         
 @app.get("/pictures/recent/{user_id}")
 async def get_recent_picture(user_id: int):
