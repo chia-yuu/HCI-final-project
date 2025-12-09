@@ -300,6 +300,80 @@ async def get_new_friend_list(user_id: int):
         except Exception as e:
             print(f"Database error: {e}") # 建議印出錯誤以便除錯
             raise HTTPException(status_code=500, detail=f"資料庫查詢失敗: {e}")
+        
+# === 訊息功能 ===
+class MessageCreate(BaseModel):
+    sender_id: int
+    receiver_id: int
+    content: str
+
+# 請確保後端有這個 API 接口
+# 2. 修改傳送訊息 API (加入餘額檢查防呆)
+@app.post("/api/v1/messages")
+async def send_message(msg: MessageCreate):
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            # A. 先查詢目前徽章數量
+            row = await conn.fetchrow("SELECT badge FROM users WHERE user_id = $1", msg.sender_id)
+            current_badge = row['badge'] if row and row['badge'] else 0
+
+            # B. 判斷餘額是否足夠
+            if current_badge < 1:
+                # 若不足，回傳 400 錯誤，停止交易
+                raise HTTPException(status_code=400, detail="徽章不足，無法傳送訊息")
+
+            # C. 扣除徽章
+            await conn.execute("""
+                UPDATE users SET badge = badge - 1 WHERE user_id = $1
+            """, msg.sender_id)
+
+            # D. 寫入訊息
+            await conn.execute("""
+                INSERT INTO messages (sender_id, receiver_id, content)
+                VALUES ($1, $2, $3)
+            """, msg.sender_id, msg.receiver_id, msg.content)
+
+    return {"status": "success", "message": "Message sent"}
+
+@app.get("/api/v1/messages/unread/{user_id}")
+async def get_unread_messages(user_id: int):
+    """
+    [Polling] 獲取指定用戶的「未讀」訊息。
+    邏輯：
+    1. 撈出 receiver_id = user_id 且 is_read = False 的訊息。
+    2. 回傳給前端。
+    3. (重要) 同時將這些訊息在資料庫改為 is_read = True，避免下次重複撈取。
+    """
+    async with app.state.db_pool.acquire() as conn:
+        # --- 修改重點：加入 JOIN users 來取得 sender_name ---
+        rows = await conn.fetch("""
+            SELECT 
+                m.id, 
+                m.sender_id, 
+                m.content, 
+                m.created_at,
+                u.name as sender_name  -- 多撈這一個欄位
+            FROM messages m
+            JOIN users u ON m.sender_id = u.user_id
+            WHERE m.receiver_id = $1 AND m.is_read = FALSE
+            ORDER BY m.created_at ASC
+        """, user_id)
+
+        if not rows:
+            return []
+
+        messages = [dict(row) for row in rows]
+        
+        # 標記已讀的邏輯保持不變
+        msg_ids = [m['id'] for m in messages]
+        if msg_ids:
+            await conn.execute("""
+                UPDATE messages 
+                SET is_read = TRUE 
+                WHERE id = ANY($1::int[])
+            """, msg_ids)
+
+        return messages
 
 # === focus mode的功能(by sandra) ===
 
@@ -528,21 +602,24 @@ async def upload_picture(data: PictureData):
             
             img_bytes = base64.b64decode(img_str)
 
+            # 存入 user_id, img, description
             await conn.execute("""
                 INSERT INTO pictures (user_id, img, description)
                 VALUES ($1, $2, $3)
             """, data.user_id, img_bytes, data.description)
             
-            print(f"User {data.user_id} 上傳照片成功，大小: {len(img_bytes)} bytes")
+            print(f"User {data.user_id} 上傳照片成功")
             return {"status": "success", "message": "Photo saved!"}
         except Exception as e:
             print(f"上傳失敗: {str(e)}")
             return {"status": "error", "message": str(e)}
 
+# 2. 取得圖片列表 API (支援動態 user_id)
+# 前端呼叫: api.get('/pictures?user_id=2')
 @app.get("/pictures")
-async def get_pictures(user_id: int = 1):
+async def get_pictures(user_id: int = Query(..., description="要查詢的使用者 ID")):
     async with app.state.db_pool.acquire() as conn:
-        # [修改] SELECT 加入 description
+        # 記得抓取 description
         rows = await conn.fetch("""
             SELECT id, img, description FROM pictures 
             WHERE user_id = $1 
@@ -557,7 +634,7 @@ async def get_pictures(user_id: int = 1):
                 results.append({
                     "id": row['id'],
                     "uri": f"data:image/jpg;base64,{img_base64}",
-                    "description": row['description'] # [新增] 回傳描述
+                    "description": row['description'] # 回傳附註文字
                 })
             
         return results
@@ -584,13 +661,34 @@ async def get_recent_picture(user_id: int):
         
         # 返回 Base64 URI 格式，方便前端 Image 元件直接使用
         return {"image_data": f"data:image/jpeg;base64,{encoded_image}"}
+# 改成下面不是寫死的看看(by芷翊)
+# @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
+# async def get_user_record_status(user_id: int = Query(1)):
+#     """
+#     API 1: 獲取用戶的稱號和徽章計數 (寫死資料)。
+#     """
+#     # 寫死資料：用戶稱號和徽章數
+#     return UserRecordStatus(
+#         title_name="時光旅人 (來自 FastAPI)",
+#         badge_count=18
+#     )
+
+# 1. 修改獲取用戶狀態的 API (讓它讀取真實 DB 數據)
 @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
 async def get_user_record_status(user_id: int = Query(1)):
-    """
-    API 1: 獲取用戶的稱號和徽章計數 (寫死資料)。
-    """
-    # 寫死資料：用戶稱號和徽章數
-    return UserRecordStatus(
-        title_name="時光旅人 (來自 FastAPI)",
-        badge_count=18
-    )
+    async with app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT title, badge FROM users WHERE user_id = $1
+        """, user_id)
+        
+        if not row:
+            # 如果找不到人，回傳預設值
+            return UserRecordStatus(title_name="新手", badge_count=0)
+
+        return UserRecordStatus(
+            title_name=row['title'] if row['title'] else "無稱號",
+            badge_count=row['badge'] if row['badge'] else 0
+        )
+    
+
+    
