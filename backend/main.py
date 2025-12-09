@@ -133,6 +133,10 @@ async def startup():
         """)
 
         await conn.execute("""
+            ALTER TABLE deadlines ADD COLUMN IF NOT EXISTS current_doing BOOLEAN DEFAULT false;
+        """)
+
+        await conn.execute("""
             ALTER TABLE IF EXISTS public.deadlines
             DROP CONSTRAINT IF EXISTS deadlines_user_id_display_order_key;
         """)
