@@ -1,5 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Image } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
@@ -31,41 +31,58 @@ export default function DeadlineItem({
   onClickEditBox,
   onClickRemoveBox,
 }: DeadlineItemProps) {
-  let bgColor = "#92a3ba";      // background color
-  let bdColor = "#49515d";      // border color
-  if (item.display_order === 1) bgColor = "#F0716F", bdColor = "#a84f4d";
-  else if (item.display_order === 2) bgColor = "#F0B56F", bdColor = "#a87e4d";
-  else if (item.display_order === -1) bgColor = "#E0E1ED", bdColor = "#b3b4bd";
-
-
   // 震動效果
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const [urgentLevel, setUrgentLevel] = useState<1 | 2 | 0>(0);
 
   useEffect(() => {
-    if (item.display_order === 1) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(item.deadline_date as string);
+    deadline.setHours(0, 0, 0, 0);
+
+    const diffTime = deadline.getTime() - today.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+    if(item.is_done){
+      setUrgentLevel(0);
+    }
+    else if (diffDays <= 1) {
+      setUrgentLevel(1);
         Animated.loop(
         Animated.sequence([
             Animated.timing(shakeAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
             Animated.timing(shakeAnim, { toValue: -1, duration: 50, useNativeDriver: true }),
             Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-        ])
+        ]), {iterations: 10}
         ).start();
     }
-    else if (item.display_order === 2) {
+    else if (diffDays <= 2) {
+      setUrgentLevel(2);
         Animated.loop(
         Animated.sequence([
             Animated.timing(shakeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
             Animated.timing(shakeAnim, { toValue: -1, duration: 200, useNativeDriver: true }),
             Animated.timing(shakeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        ])
+        ]), {iterations: 3}
         ).start();
     }
-  }, [item.display_order]);
+    else{
+      setUrgentLevel(0);
+    }
+  }, [item.deadline_date, item.is_done]);
 
-  const rotate = shakeAnim.interpolate({
-    inputRange: [-1, 1],
-    outputRange: item.display_order == 1? ["-2deg", "2deg"] : item.display_order == 2? ["-1deg", "1deg"] : ["0deg", "0deg"],
-  });
+  const rotate = urgentLevel === 1? 
+    shakeAnim.interpolate({ inputRange: [-1, 1], outputRange: ["-2deg", "2deg"] }) : urgentLevel === 2?
+    shakeAnim.interpolate({ inputRange: [-1, 1], outputRange: ["-1deg", "1deg"] }) : "0deg";
+
+
+  // set color
+  let bgColor = "#92a3ba";      // background color
+  let bdColor = "#49515d";      // border color
+  if (urgentLevel === 1) bgColor = "#F0716F", bdColor = "#a84f4d";
+  else if (urgentLevel === 2) bgColor = "#F0B56F", bdColor = "#a87e4d";
+  else if (item.display_order === -1) bgColor = "#E0E1ED", bdColor = "#b3b4bd";
 
   return (
     <Animated.View style={{ transform: [{ rotate }] }}>
@@ -117,10 +134,10 @@ export default function DeadlineItem({
         </TouchableOpacity>
       }
 
-      {item.display_order == 1 && 
+      {urgentLevel == 1 && 
         <Image source={require('../assets/images/bomb1.png')} style={[styles.bombImg, {top: -15}]}></Image>
       }
-      {item.display_order == 2 && 
+      {urgentLevel == 2 && 
         <Image source={require('../assets/images/bomb2.png')} style={[styles.bombImg, {bottom: -20}]}></Image>
       }
     </TouchableOpacity>
