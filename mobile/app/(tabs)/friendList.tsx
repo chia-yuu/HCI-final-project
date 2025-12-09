@@ -20,7 +20,8 @@ import * as Notifications from 'expo-notifications';
 // 2. 設定通知行為 (確保 App 開著的時候也會跳出通知)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true, // 顯示橫幅
+    shouldShowBanner: true, // 確保會跳出橫幅
+    shouldShowList: true,   // 確保會顯示在通知中心
     shouldPlaySound: true, // 播放聲音
     shouldSetBadge: false,
   }),
