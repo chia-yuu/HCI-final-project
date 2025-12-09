@@ -35,9 +35,9 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [notificationImage, setNotificationImage] = useState<string | null>(null);
   const [notificationMessage, setNotificationMessage] = useState<string>("");
-  const [notificationTitle, setNotificationTitle] = useState("提醒"); // 預設標題
+  const [notificationTitle, setNotificationTitle] = useState("提醒"); 
 
-  // === 1. 初始設定 (權限與頻道) ===
+  // === 1. 初始設定 ===
   useEffect(() => {
     async function configurePushNotifications() {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -60,35 +60,46 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
     configurePushNotifications();
   }, []);
 
-  // === 2. 監聽點擊通知 ===
+  // === 2. [修改] 監聽點擊通知 + 標記已讀 ===
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+    // 注意：這裡加上 async 以便呼叫 API
+    const subscription = Notifications.addNotificationResponseReceivedListener(async response => {
       console.log("👆 使用者點擊了通知！");
       
       const content = response.notification.request.content;
-      const data = content.data || {}; // 確保 data 不會是 undefined
+      const data = content.data || {}; 
       
-      // 設定內容
+      // 設定彈窗內容
       setNotificationMessage(content.body || "收到新訊息");
       
-      // --- [邏輯修正] 設定標題 ---
+      // 設定標題
       if (data.senderName) {
-        // 如果有傳送者名字 (代表是朋友傳的)，改成 "{名字}提醒你該專注了"
         setNotificationTitle(`${data.senderName}提醒你該專注了`);
       } else {
-        // 如果是休息提醒 (沒有 senderName)，就使用原本通知的標題 (FocusMate 提醒 🐱)
         setNotificationTitle(content.title || "提醒");
       }
 
-      // --- [邏輯修正] 設定圖片 ---
-      // 只有當 data 裡面有 imageUrl 時才設定，否則為 null (休息提醒就不會顯示圖片)
+      // 設定圖片
       if (data.imageUrl) {
         setNotificationImage(data.imageUrl);
       } else {
         setNotificationImage(null);
       }
       
+      // 開啟彈窗
       setShowImageModal(true);
+
+      // 👇👇👇 [新增功能] 呼叫後端 API 標記已讀 👇👇👇
+      if (data.messageId) {
+        try {
+          console.log(`正在標記訊息 ID ${data.messageId} 為已讀...`);
+          await api.post(`/api/v1/messages/${data.messageId}/read`);
+          console.log("✅ 標記成功！");
+        } catch (error) {
+          console.error("❌ 標記已讀失敗:", error);
+          // 這裡不跳 Alert，避免影響使用者看圖片的心情，只要後台紀錄就好
+        }
+      }
     });
 
     return () => subscription.remove();
@@ -109,8 +120,7 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
         if (has_unread && data) {
            if (data.id !== lastNotificationIdRef.current) {
               console.log("🚀 觸發通知 function...");
-
-              // 朋友傳訊息時的 GIF 圖片
+              // 這可更換圖片
               const alertImage = "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmUxdXNxMm1kaW1uOWdxbmRkZHZ6bHVseTRvaG9tNzUyanh6M25iOSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/s35s4lFBxpndm/giphy.gif"; 
 
               await Notifications.scheduleNotificationAsync({
@@ -119,7 +129,7 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
                   body: data.content,
                   sound: true, 
                   priority: Notifications.AndroidNotificationPriority.HIGH,
-                  // 這裡傳入 senderName 和 imageUrl
+                  // 這裡記得要傳 messageId，上面的監聽器才抓得到
                   data: { 
                     messageId: data.id,
                     imageUrl: alertImage,
@@ -142,7 +152,7 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
   }, [userId]);
 
 
-  // === 專注計時器 ===
+  // === 專注計時器 (維持不動) ===
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isFocusing) {
@@ -173,11 +183,8 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
     startTimeRef.current = null;
 
     if (mode === 'pause') {
-      // === [休息模式] ===
       setIsResting(true);
       restStartTimeRef.current = Date.now();
-      
-      // 這裡維持原狀：只有純文字，沒有 data 裡的圖片
       await Notifications.scheduleNotificationAsync({
         content: {
           title: 'FocusMate 提醒 🐱',
@@ -187,7 +194,6 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
         trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 60, repeats: false },
       });
     } else {
-      // === [結束模式] ===
       setIsResting(false);
       restStartTimeRef.current = null;
       try { await api.post('/user/status', { is_studying: false, user_id: userId }); } catch (e) {}
@@ -225,12 +231,10 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             
-            {/* 標題 (會根據是否為朋友訊息變動) */}
             <Text style={styles.modalTitle}>{notificationTitle}</Text>
             
             <Text style={styles.modalText}>{notificationMessage}</Text>
 
-            {/* 只有當 notificationImage 存在時才顯示圖片 (休息提醒時這裡是 null，所以不會顯示) */}
             {notificationImage && (
               <Image 
                 source={{ uri: notificationImage }} 

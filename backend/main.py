@@ -40,9 +40,6 @@ class DeadlineItem(BaseModel):
 class UserRecordStatus(BaseModel):
     title_name: str
     badge_count: int
-
-class CurrentUserId(BaseModel):
-    user_id: int
 # 💡 新增：好友狀態回應模型，用於 /api/v1/friends/status
 class FriendStatusResponse(BaseModel):
     friend_id: int
@@ -408,6 +405,24 @@ async def get_unread_messages(user_id: int):
 
         # 直接回傳最新的一筆資料
         return dict(rows[0])
+# 5. [新增] 標記單一訊息已讀 (點擊通知專用)
+@app.post("/api/v1/messages/{message_id}/read")
+async def mark_single_message_read(message_id: int):
+    """
+    當使用者點擊通知時呼叫，將該則訊息標記為已讀。
+    """
+    async with app.state.db_pool.acquire() as conn:
+        result = await conn.execute("""
+            UPDATE messages 
+            SET is_read = TRUE 
+            WHERE id = $1
+        """, message_id)
+        
+        # 檢查是否有更新到資料
+        if result == "UPDATE 0":
+            return {"status": "warning", "message": "Message not found or already read"}
+
+    return {"status": "success", "message": f"Message {message_id} marked as read"}
 
 # === focus mode的功能(by sandra) ===
 
@@ -669,38 +684,21 @@ async def get_recent_picture(user_id: int):
         
         # 返回 Base64 URI 格式，方便前端 Image 元件直接使用
         return {"image_data": f"data:image/jpeg;base64,{encoded_image}"}
-# 改成下面不是寫死的看看(by芷翊)
-# @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
-# async def get_user_record_status(user_id: int = Query(1)):
-#     """
-#     API 1: 獲取用戶的稱號和徽章計數 (寫死資料)。
-#     """
-#     # 寫死資料：用戶稱號和徽章數
-#     return UserRecordStatus(
-#         title_name="時光旅人 (來自 FastAPI)",
-#         badge_count=18
-#     )
 
-@app.get("/api/v1/current-user-id", response_model=CurrentUserId)
-async def get_current_user_id(user_id: int = Query(1, description="前端傳入的當前用戶 ID")):
-    """
-    僅用於回傳前端當前持有的 user_id。
-    """
-    return CurrentUserId(user_id=user_id)
 
 # 1. 修改獲取用戶狀態的 API (讓它讀取真實 DB 數據)
-# @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
-# async def get_user_record_status(user_id: int = Query(1)):
-#     async with app.state.db_pool.acquire() as conn:
-#         row = await conn.fetchrow("""
-#             SELECT title, badge FROM users WHERE user_id = $1
-#         """, user_id)
+@app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
+async def get_user_record_status(user_id: int = Query(1)):
+    async with app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT title, badge FROM users WHERE user_id = $1
+        """, user_id)
         
-#         if not row:
-#             # 如果找不到人，回傳預設值
-#             return UserRecordStatus(title_name="新手", badge_count=0)
+        if not row:
+            # 如果找不到人，回傳預設值
+            return UserRecordStatus(title_name="新手", badge_count=0)
 
-#         return UserRecordStatus(
-#             title_name=row['title'] if row['title'] else "無稱號",
-#             badge_count=row['badge'] if row['badge'] else 0
-#         )
+        return UserRecordStatus(
+            title_name=row['title'] if row['title'] else "無稱號",
+            badge_count=row['badge'] if row['badge'] else 0
+        )
