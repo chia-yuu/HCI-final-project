@@ -1,6 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { useRef, useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Image } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Image, Easing } from "react-native";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 interface TodoItem {
@@ -10,6 +10,7 @@ interface TodoItem {
   thing: string;
   is_done: boolean;
   display_order: number;
+  current_doing: boolean;
 }
 
 interface DeadlineItemProps {
@@ -18,6 +19,7 @@ interface DeadlineItemProps {
   isEditing: boolean;
   drag: () => void;
   onClickCheckBox: (item: TodoItem) => void;
+  onClickDoing: (item: TodoItem) => void;
   onClickEditBox: (item: TodoItem) => void;
   onClickRemoveBox: (item: TodoItem) => void;
 }
@@ -28,13 +30,13 @@ export default function DeadlineItem({
   isEditing,
   drag,
   onClickCheckBox,
+  onClickDoing,
   onClickEditBox,
   onClickRemoveBox,
 }: DeadlineItemProps) {
-  // 震動效果
+  // 震動效果 (urgent item)
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const [urgentLevel, setUrgentLevel] = useState<1 | 2 | 0>(0);
-
   useEffect(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -72,10 +74,40 @@ export default function DeadlineItem({
     }
   }, [item.deadline_date, item.is_done]);
 
-  const rotate = urgentLevel === 1? 
-    shakeAnim.interpolate({ inputRange: [-1, 1], outputRange: ["-2deg", "2deg"] }) : urgentLevel === 2?
-    shakeAnim.interpolate({ inputRange: [-1, 1], outputRange: ["-1deg", "1deg"] }) : "0deg";
+  const rotate = urgentLevel <= 2? shakeAnim.interpolate({ inputRange: [-1, 1], outputRange: ["-1deg", "1deg"] }) : "0deg";
 
+  // 旋轉效果 (current doing icon)
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef(null);
+
+  useEffect(() => {
+    if (!isEditing && item.current_doing) {
+      spinAnim.setValue(0);
+
+      animationRef.current = Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+
+      animationRef.current.start();
+    } else {
+      if (animationRef.current) {
+        animationRef.current.stop();
+        animationRef.current = null;
+      }
+      spinAnim.setValue(0);
+    }
+  }, [item.current_doing, isEditing]);
+
+  const spin = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+  
 
   // set color
   let bgColor = "#92a3ba";      // background color
@@ -89,6 +121,7 @@ export default function DeadlineItem({
     <TouchableOpacity
       style={[styles.container, { backgroundColor: isActive ? "#c2dfe3" : bgColor, borderColor: bdColor}]}
     >
+      {/* left most: drag icon */}
       <TouchableOpacity
         onLongPress={item.is_done ? null : drag}
         style={{ padding: 6, opacity: item.is_done ? 0 : 1 }}
@@ -97,8 +130,39 @@ export default function DeadlineItem({
         <Icon name="drag-indicator" size={24} color="#1f1f1f" />
       </TouchableOpacity>
 
-      {/* not editing -> show checkbox */}
-      {(!isEditing || (isEditing && item.is_done)) &&
+
+      {/* second: box */}
+      {/* not editing -> select current doing */}
+      {/* is editing -> show checkbox */}
+      {!isEditing &&
+        <TouchableOpacity
+            onPress={() => onClickDoing(item)}
+            style={[styles.doingBox, item.current_doing && styles.doingBoxChecked]}
+        >
+          {item.current_doing && 
+            <Animated.View style={{
+              transform: [{ rotate: spin }],
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: 24,
+              height: 24,
+            }}>
+              <Icon name="autorenew" size={24} color="white" />
+            </Animated.View>
+          }
+          {!item.current_doing &&
+            <View style={{
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: 24,
+              height: 24,
+            }}>
+              <Icon name="pause" size={24} color="#78797f" />
+            </View>
+          }
+        </TouchableOpacity>
+      }
+      {isEditing && 
         <TouchableOpacity
             onPress={() => onClickCheckBox(item)}
             style={[styles.checkbox, item.is_done && styles.checkboxChecked]}
@@ -107,24 +171,25 @@ export default function DeadlineItem({
         </TouchableOpacity>
       }
 
-      {/* is editing -> show edit icon */}
-      {isEditing && !item.is_done &&
-        <TouchableOpacity
-            onPress={() => onClickEditBox(item)}
-            style={styles.editingBox}
-        >
-            <Icon name="edit" size={24}/>
-        </TouchableOpacity>
-      }
 
-      <View style={styles.textContainer}>
+      {/* third: item body: date & task name */}
+      {/* when editing, click item body to modify item */}
+      <TouchableOpacity
+            onPress={() => {
+              if (isEditing) {
+                onClickEditBox(item);
+              }
+            }}
+            style={styles.textContainer}
+      >
         <Text style={[styles.dateText, item.is_done && { color: "#c9cad5"}]}>{item.deadline_date ?? ""}</Text>
         <Text style={[styles.taskText, item.is_done && { textDecorationLine: "line-through", color: "#b3b4bd"}]}>
           {item.thing}
         </Text>
-      </View>
+      </TouchableOpacity>
 
-      {/* is editing -> show remove icon */}
+
+      {/* fourth: is editing -> show remove icon */}
       {isEditing &&
         <TouchableOpacity
             onPress={() => onClickRemoveBox(item)}
@@ -134,6 +199,7 @@ export default function DeadlineItem({
         </TouchableOpacity>
       }
 
+      {/* visual effect: bomb */}
       {urgentLevel == 1 && 
         <Image source={require('../assets/images/bomb1.png')} style={[styles.bombImg, {top: -15}]}></Image>
       }
@@ -162,12 +228,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  doingBox: {
+    width: 24,
+    height: 24,
+    borderWidth: 1,
+    borderColor: "#333",
+    marginLeft: 3,
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#c9cad5",
+  },
+  doingBoxChecked: {
+    borderColor: "#4a9832",
+    backgroundColor: "#78B17D",
+  },
   checkbox: {
     width: 24,
     height: 24,
     borderWidth: 1,
     borderColor: "#333",
-    // marginHorizontal: 12,
     marginLeft: 3,
     marginRight: 12,
     justifyContent: "center",

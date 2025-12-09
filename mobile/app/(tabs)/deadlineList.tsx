@@ -17,6 +17,7 @@ interface TodoItem {
   thing: string;
   is_done: boolean;
   display_order: number;
+  current_doing: boolean;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -26,6 +27,7 @@ export default function DeadlineListScreen() {
   const [deadlines, setDeadlines] = useState<TodoItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(true);
   const [showPicker, setShowPicker] = useState(false);
   const [newTask, setNewTask] = useState("");
   const [newDate, setNewDate] = useState("");
@@ -40,6 +42,7 @@ export default function DeadlineListScreen() {
     try {
         // 💡 傳遞 user_id 作為查詢參數
         const response = await api.get('/deadlines/get-deadlines', { params: { user_id: userId } });
+        console.log(response.data[1]);
         setDeadlines(response.data);
     } catch (error) {
       console.error("fetchDeadlines() in deadlineList.tsx: 抓不到清單: ", error);
@@ -193,19 +196,50 @@ export default function DeadlineListScreen() {
     fetchDeadlines();
   }
 
+  // set current_doing
+  const onClickDoing = async (item: TodoItem) => {
+    if (userId === null) return;
+    try{
+      const newData = deadlines.map((d) =>
+        d.id === item.id ? { ...d, current_doing: !d.current_doing } : d
+      );
+      setDeadlines(newData);
+
+      const body = {
+        id: item.id,
+        current_doing: !item.current_doing,
+        user_id: userId
+      }
+      await api.post("/deadlines/doing-item", body);
+      fetchDeadlines();
+    } catch (error){
+      console.error("onClickDoing() in deadlineList.tsx: ", error);
+    }
+  };
+
   return (
     <PageTemplate title="任務清單" selectedTab="deadline">
       <View style = {styles.container}>
+        {/* header: intro + edit button */}
         <View style = {styles.editContainer}>
+          {!editing && <View>
+            <Text style={{fontSize: 15}}>選擇現在要做的事情</Text>
+            <Text style={{fontSize: 15}}>開始專注吧！</Text>
+          </View>}
+          {editing && <View>
+            <Text style={{fontSize: 15}}>將完成的任務打勾刪除</Text>
+            <Text style={{fontSize: 15}}>或是點擊名稱來修改任務吧！</Text>
+          </View>}
           <TouchableOpacity onPress={onPressItem} style={{paddingLeft: 10}}>
             {!editing && <Icon name="edit" size={26} style={styles.editIcon} />}
             {editing && <Icon name="draw" size={26} style={styles.editIcon} />}
           </TouchableOpacity>
         </View>
         
+        {/* deadline list */}
         {deadlines.length > 0 ? (
         <DraggableFlatList<TodoItem>
-          data={deadlines}
+          data={deadlines.filter(item => editing || !item.is_done)}
           keyExtractor={(item) => item.id.toString()}
           onDragEnd={({ data }) => { updateOrder(data); }}
           renderItem={({ item, drag, isActive, getIndex }: RenderItemParams<TodoItem>) => (
@@ -215,18 +249,20 @@ export default function DeadlineListScreen() {
               isEditing={editing == true}
               drag={drag}
               onClickCheckBox={onClickCheckBox}
+              onClickDoing={onClickDoing}
               onClickEditBox={onClickEditBox}
               onClickRemoveBox={onClickRemoveBox}
             />
           )}
           activationDistance={10}
-          style={[styles.deadlineContainer, {height: editing? "80%" : "90%"}]}
+          style={[styles.deadlineContainer, {height: editing? "75%" : "85%"}]}
         />
         ) : (
           !editing && <Text style={{color:'#999', fontSize: 18, marginHorizontal: 10, marginTop: 20}}>哇你所有事情都做完了！恭喜你～</Text>
         )
         }
 
+        {/* add button (show when editing) */}
         {editing &&
           <TouchableOpacity
             onPress={addItem}
@@ -377,6 +413,37 @@ export default function DeadlineListScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* 使用說明 (之後刪) */}
+        <Modal
+          transparent={true}
+          visible={showInfoModal}
+          animationType="fade"
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>使用說明(之後會刪掉)</Text> 
+              <Text>- 一進來可以點每個任務左邊那個暫停符號，選擇現在要做的事情。現在正在做的事情會顯示loading 的icon</Text>
+              <Text></Text>
+              <Text>- 點擊右上角的編輯icon 會進入編輯模式</Text>
+              <Text></Text>
+              <Text>- 在編輯模式中可以點左邊的框框，把完成的事情打勾</Text>
+              <Text></Text>
+              <Text>- 或是點任務名稱來修改任務(改名稱、日期)、或是點右邊的垃圾桶來刪除任務</Text>
+              <Text></Text>
+              <Text>(現在的版本是安卓可以跑、iOS會閃退的版本 qq)</Text>
+              <Text></Text>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: "#415a77" }]}
+                onPress={async () => {
+                  setShowInfoModal(false);
+                }}
+              >
+                <Text style={[styles.btnText]}>關閉</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </PageTemplate>
   );
@@ -385,10 +452,8 @@ export default function DeadlineListScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    // backgroundColor: "green",
     height: "100%",
     width: "100%",
-    // paddingVertical: 10,
     flex: 1,
     flexDirection: "column"
   },
@@ -400,14 +465,15 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   editContainer: {
-    height: 30,
-    alignItems: "flex-end",
-    paddingHorizontal: 10,
+    flexDirection: "row",
+    height: 40,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
     marginBottom: 10,
   },
   editIcon: {
-    flex: 1,
-    height: "100%",
+    height: 30,
     backgroundColor: "white",
     color: "black",
     borderRadius:6,

@@ -36,6 +36,7 @@ class DeadlineItem(BaseModel):
     task: str = 'task name'
     is_done: bool = False
     display_order: int = 1
+    current_doing: bool = False
 
 class UserRecordStatus(BaseModel):
     title_name: str
@@ -396,9 +397,9 @@ async def get_deadlines(user_id: int = Query(..., description="要查詢的使�
         rows = await conn.fetch("""
             SELECT id, task as thing, is_done, display_order 
             FROM deadlines 
-            WHERE user_id = $1 
+            WHERE user_id = $1 AND current_doing = true
             ORDER BY display_order ASC
-        """, user_id) # 💡 修正 3: 傳遞 user_id 給 SQL
+        """, user_id)
         return [dict(row) for row in rows]
 
 # 修改 is_studying
@@ -470,8 +471,6 @@ async def get_deadlines_with_reorder(user_id: int = Query(..., description="要�
             ORDER BY display_order ASC
         """, user_id) 
 
-
-
         # calculate the correct display_order
         undone = [row for row in rows if row["is_done"] is False]
         done = [row for row in rows if row["is_done"] is True]
@@ -501,9 +500,8 @@ async def get_deadlines_with_reorder(user_id: int = Query(..., description="要�
                         WHERE id = $2 AND user_id = $3
                     """, new_order, id_, user_id) 
 
-
         rows = await conn.fetch("""
-            SELECT id, user_id, deadline_date, task as thing, is_done, display_order
+            SELECT id, user_id, deadline_date, task as thing, is_done, display_order, current_doing
             FROM deadlines
             WHERE user_id = $1
             ORDER BY is_done ASC, display_order ASC
@@ -533,7 +531,7 @@ async def deadline_done(item: DeadlineItem):
                 UPDATE deadlines
                 SET is_done = $1, display_order = -1
                 WHERE id = $2 AND user_id = $3 
-            """, item.is_done, item.id, item.user_id) 
+            """, item.is_done, item.id, item.user_id)
 
     return {"status": "success", "updated": 1}
 
@@ -589,6 +587,18 @@ async def remove_deadline(item: DeadlineItem):
                 DELETE FROM deadlines WHERE id = $1 AND user_id = $2;
             """, 
             item.id, item.user_id) 
+
+    return {"status": "success", "update": 1}
+
+@app.post("/deadlines/doing-item")
+async def set_doing(item: DeadlineItem):
+    async with app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("""
+                UPDATE deadlines
+                SET current_doing = $1
+                WHERE id = $2 AND user_id = $3 
+            """, item.current_doing, item.id, item.user_id)
 
     return {"status": "success", "update": 1}
             
