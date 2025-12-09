@@ -4,6 +4,7 @@ import asyncpg
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Optional, List
+import json
 
 app = FastAPI()
 
@@ -160,6 +161,23 @@ async def startup():
             VALUES (2, 'User 2', FALSE, 'Beginner', 0)
             ON CONFLICT (user_id) DO NOTHING;
         """)
+        # --- 2. [新增] 設定 User 1 的好友列表包含 2 ---
+        # 如果 user_id=1 已經在 new_friends 裡，就更新它的列表
+        await conn.execute("""
+            INSERT INTO new_friends (user_id, friend_id_list)
+            VALUES (1, '[2]') 
+            ON CONFLICT (user_id) 
+            DO UPDATE SET friend_id_list = '[2]';
+        """)
+
+        # --- 3. [新增] 設定 User 2 的好友列表包含 1 ---
+        # 如果 user_id=2 已經在 new_friends 裡，就更新它的列表
+        await conn.execute("""
+            INSERT INTO new_friends (user_id, friend_id_list)
+            VALUES (2, '[1]') 
+            ON CONFLICT (user_id) 
+            DO UPDATE SET friend_id_list = '[1]';
+        """)
 
 
 @app.on_event("shutdown")
@@ -227,12 +245,8 @@ async def get_friends_status(ids: str = Query(..., description="好友 User ID �
 
 @app.get("/api/v1/new-friends/{user_id}")
 async def get_new_friend_list(user_id: int):
-    """
-    透過 user_id 查詢 new_friends 表格，獲取好友 ID 列表。
-    """
     async with app.state.db_pool.acquire() as conn:
         try:
-            # 1. 查詢該 user_id 的 friend_id_list 欄位
             row = await conn.fetchrow("""
                 SELECT friend_id_list 
                 FROM new_friends 
@@ -240,22 +254,31 @@ async def get_new_friend_list(user_id: int):
             """, user_id)
             
             if not row or row["friend_id_list"] is None:
-                # 如果找不到該用戶或 friend_id_list 為 NULL，返回空列表
                 return {"user_id": user_id, "friend_ids": []}
 
-            # 2. friend_id_list 是一個 JSON 欄位，asyncpg 通常會將其讀取為 Python 列表
-            friend_id_list = row["friend_id_list"]
+            raw_data = row["friend_id_list"]
             
-            # 確保返回的是一個列表，以便前端處理
-            if isinstance(friend_id_list, list):
-                return {"user_id": user_id, "friend_ids": friend_id_list}
-            else:
-                # 處理資料庫中 JSON 格式錯誤或非預期格式的情況
-                print(f"Warning: friend_id_list for user {user_id} is not a list: {friend_id_list}")
-                return {"user_id": user_id, "friend_ids": []}
+            # 2. 進行型別檢查與轉換邏輯
+            final_list = []
+
+            # 情況 A: 如果已經是 List (asyncpg 針對某些 array 類型會自動轉)
+            if isinstance(raw_data, list):
+                final_list = raw_data
+            
+            # 情況 B: 如果是 String (常見於 json/text 欄位)，需要解析
+            elif isinstance(raw_data, str):
+                try:
+                    parsed_data = json.loads(raw_data)
+                    if isinstance(parsed_data, list):
+                        final_list = parsed_data
+                except json.JSONDecodeError:
+                    print(f"JSON 解析錯誤: {raw_data}")
+                    final_list = []
+            
+            return {"user_id": user_id, "friend_ids": final_list}
 
         except Exception as e:
-            # 捕獲資料庫錯誤
+            print(f"Database error: {e}") # 建議印出錯誤以便除錯
             raise HTTPException(status_code=500, detail=f"資料庫查詢失敗: {e}")
 
 # === focus mode的功能(by sandra) ===
