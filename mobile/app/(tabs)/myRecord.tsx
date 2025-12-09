@@ -3,9 +3,9 @@ import { ScrollView, View, Image, Dimensions, TouchableOpacity, Modal, Alert, St
 import PageTemplate from '@/components/page-template';
 import { ThemedText } from '@/components/themed-text';
 import { LineChart, BarChart } from 'react-native-chart-kit';
-import api from '../../api/api'; // ⭐ 引入 API
+import api from '../../api/api'; // ⭐ [恢復] 引入 API 模組
 import { useFocusEffect } from '@react-navigation/native'; 
-import { useUser } from '../../context/UserContext';
+import { useUser } from '../../context/UserContext'; 
 
 // ----------------------------------------------------
 // ⭐ 後端 API 資料介面
@@ -23,12 +23,8 @@ interface PhotoItem {
 }
 // ----------------------------------------------------
 
-// 假設的稱號資料
-const AVAILABLE_TITLES = [
-  { id: 'novice', name: '專注新人' },
-  { id: 'expert', name: '閱讀專家' },
-  { id: 'master', name: '時光大師' },
-];
+// 假設的稱號資料 (保持不變)
+// ... (這裡不需要動，直接使用下面的常數即可，為了簡潔省略重複定義，程式碼中已包含)
 
 // ⭐ 顏色定義
 const PRIMARY_TEXT_COLOR = '#0D1B2A';
@@ -36,34 +32,60 @@ const PAGE_BACKGROUND_COLOR = '#E0E1DD';
 const BAR_BACKGROUND_COLOR = '#d1d5db'; 
 
 // ----------------------------------------------------
-// ⭐ 模擬資料 (MOCK DATA)
+// ⭐ 模擬資料 (MOCK DATA) - 保持不變
 // ----------------------------------------------------
-const MOCK_STATUS_DATA = {
-    titleName: AVAILABLE_TITLES[1].name, 
-    badgeCount: 15, 
-};
+interface Title {
+  id: string;
+  name: string;
+}
 
-const MOCK_WEEKLY_DATA = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    data: [6.5, 4.8, 7.5, 8.5, 5.0, 6.5, 7.0], 
+interface UserRecordData {
+  AVAILABLE_TITLES: Title[];
+  titleName: string;
+  badgeCount: number;
+  weeklyData: number[]; 
+  focusTimeData: number[]; 
+  imageUri: string;
+}
+
+const MOCK_DATA: Record<number, UserRecordData> = {
+  1: {
+    AVAILABLE_TITLES: [{ id: 'novice', name: '專注新人' }, { id: 'expert', name: '閱讀專家' }, { id: 'master', name: '時光大師' }],
+    titleName: '時光大師', 
+    badgeCount: 99, 
+    weeklyData: [6.5, 4.8, 7.5, 8.5, 5.0, 6.5, 7.0], 
+    focusTimeData: [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.5, 0.0],
+    imageUri: 'https://placekitten.com/400/300', 
+  },
+  2: {
+    AVAILABLE_TITLES: [{ id: 'novice', name: '專注新人' }, { id: 'expert', name: '閱讀大師' }, { id: 'master', name: '內卷小丑' }],
+    titleName: '專注新人', 
+    badgeCount: 5, 
+    weeklyData: [2.1, 1.5, 3.0, 2.5, 1.8, 2.2, 3.1],
+    focusTimeData: [0.0, 0.2, 0.5, 0.8, 0.3, 0.1, 0.0, 0.0],
+    imageUri: 'https://placehold.co/400x300/F4D35E/000000/png', 
+  },
 };
-// ----------------------------------------------------
 
 export default function MyRecordScreen() {
-  const { userId } = useUser(); // 取得動態 User ID
   const screenWidth = Dimensions.get('window').width;
   const chartWidth = screenWidth - 40; 
   
-  // [新增] 計算照片寬度 (一排三張，扣掉 padding)
+  // [新增] 計算照片寬度 (一排三張，預留間距)
   const imageSize = (screenWidth - 60) / 3;
 
+  const { userId } = useUser();
+  const currentUserId = userId || 1; // 預設 User 1
+  const currentUserData = MOCK_DATA[currentUserId] || MOCK_DATA[1]; // 防呆
+
   // ⭐ 1. 狀態
-  const [titleName, setTitleName] = useState(MOCK_STATUS_DATA.titleName); 
-  const [badgeCount, setBadgeCount] = useState(MOCK_STATUS_DATA.badgeCount); 
+  const [titleName, setTitleName] = useState(currentUserData.titleName); 
+  const AVAILABLE_TITLES = currentUserData.AVAILABLE_TITLES;
+  const [badgeCount, setBadgeCount] = useState(currentUserData.badgeCount); 
   const [isTitleMenuVisible, setIsTitleMenuVisible] = useState(false);
   const [weeklyReadingData, setWeeklyReadingData] = useState({
-    labels: MOCK_WEEKLY_DATA.labels,
-    datasets: [{ data: MOCK_WEEKLY_DATA.data }],
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{ data: currentUserData.weeklyData }],
   });
   
   // [新增] 照片相關狀態
@@ -72,7 +94,7 @@ export default function MyRecordScreen() {
   const [isPhotoModalVisible, setIsPhotoModalVisible] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false); // 下拉更新用
+  const [refreshing, setRefreshing] = useState(false);
 
   // ----------------------------------------------------
   // ⭐ 2. 資料獲取邏輯
@@ -84,59 +106,52 @@ export default function MyRecordScreen() {
   );
 
   const fetchData = async () => {
-    // 如果不是下拉更新，才顯示全屏 Loading
     if (!refreshing) setIsLoading(true);
 
-    const currentUserId = userId || 1; // 防呆
-
     try {
-        // 1. 抓取稱號徽章
-        const statusResponse = await api.get<UserRecordStatus>(`/api/v1/user/record_status?user_id=${currentUserId}`);
-        console.log("API 成功回傳資料:", statusResponse.data);
-        setTitleName(statusResponse.data.title_name);
-        setBadgeCount(statusResponse.data.badge_count);
-
+      // 1. 嘗試從 API 抓取 User Status
+      const statusResponse = await api.get<UserRecordStatus>(`/api/v1/user/record_status?user_id=${currentUserId}`);
+      console.log("API 成功回傳資料:", statusResponse.data);
+      setTitleName(statusResponse.data.title_name);
+      setBadgeCount(statusResponse.data.badge_count);
     } catch (error) {
-      // console.error("API 呼叫失敗，使用模擬資料:", error);
-      setTitleName(MOCK_STATUS_DATA.titleName);
-      setBadgeCount(MOCK_STATUS_DATA.badgeCount);
+      // 失敗則回退到 Mock Data (保持原本邏輯)
+      setTitleName(currentUserData.titleName);
+      setBadgeCount(currentUserData.badgeCount);
     }
-    
-    // [新增] 2. 抓取照片列表
+
     try {
+        // [新增] 2. 嘗試抓取真實照片牆
         const picturesResponse = await api.get(`/pictures?user_id=${currentUserId}`);
         if (picturesResponse.data) {
             setPhotos(picturesResponse.data);
         }
     } catch (error) {
-        console.error("抓取照片失敗:", error);
+        console.error("抓取照片失敗 (可能是後端未開啟):", error);
+        // 如果抓失敗，可以保持 photos 為空，或者塞入 mock data
     }
 
-    // 3. 抓取週資料 (保持模擬)
-    try {
-        const chartColors = [
-          (opacity = 1) => `rgba(0, 150, 136, ${opacity})`, 
-          (opacity = 1) => `rgba(255, 87, 34, ${opacity})`, 
-          (opacity = 1) => `rgba(103, 58, 183, ${opacity})`, 
-          (opacity = 1) => `rgba(76, 175, 80, ${opacity})`, 
-          (opacity = 1) => `rgba(255, 193, 7, ${opacity})`, 
-          (opacity = 1) => `rgba(121, 85, 72, ${opacity})`, 
-          (opacity = 1) => `rgba(244, 67, 54, ${opacity})`, 
-        ];
+    // 3. 圖表資料 (保持 Mock Data 邏輯，因為你後端好像還沒接圖表 API)
+    const chartColors = [
+        (opacity = 1) => `rgba(0, 150, 136, ${opacity})`, 
+        (opacity = 1) => `rgba(255, 87, 34, ${opacity})`, 
+        (opacity = 1) => `rgba(103, 58, 183, ${opacity})`, 
+        (opacity = 1) => `rgba(76, 175, 80, ${opacity})`, 
+        (opacity = 1) => `rgba(255, 193, 7, ${opacity})`, 
+        (opacity = 1) => `rgba(121, 85, 72, ${opacity})`, 
+        (opacity = 1) => `rgba(244, 67, 54, ${opacity})`, 
+    ];
 
-        setWeeklyReadingData({
-          labels: MOCK_WEEKLY_DATA.labels,
-          datasets: [{ 
-            data: MOCK_WEEKLY_DATA.data,
-            colors: chartColors.slice(0, MOCK_WEEKLY_DATA.data.length),
-          }],
-        });
-    } catch (error) {
-        console.error("Error fetching weekly data:", error);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
+    setWeeklyReadingData({
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [{ 
+            data: currentUserData.weeklyData,
+            colors: chartColors.slice(0, currentUserData.weeklyData.length),
+        }],
+    });
+
+    setIsLoading(false);
+    setRefreshing(false);
   };
 
   const onRefresh = () => {
@@ -144,11 +159,11 @@ export default function MyRecordScreen() {
     fetchData();
   };
   
-  // 稱號選單點擊處理
   const selectTitle = (newTitle: string) => {
     setIsTitleMenuVisible(false); 
     Alert.alert("更換稱號", `稱號已更換為「${newTitle}」`);
     setTitleName(newTitle);
+    // 這裡可以補上 POST API 更新稱號
   };
 
   // [新增] 照片點擊處理
@@ -162,9 +177,14 @@ export default function MyRecordScreen() {
     setSelectedPhoto(null);
   };
 
+  // 圖表設定 (Mock)
   const focusTimeData = { 
     labels: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
-    datasets: [{ data: [0.0, 0.0, 0.0, 1.0, 0.5, 1.0, 0.5, 0.0], color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, strokeWidth: 1.5 }],
+    datasets: [{
+      data: currentUserData.focusTimeData,
+      color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, 
+      strokeWidth: 1.5,
+    }],
   };
 
   const commonChartConfig = { 
@@ -195,7 +215,7 @@ export default function MyRecordScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
 
-        {/* 修正: 外層 Wrapper，整體向左移 50 單位 */}
+        {/* 修正 1: 外層 Wrapper，整體向左移 50 單位 */}
         <View style={{ marginLeft: -50 }}>
 
           {/* Title & Badge */}
@@ -280,6 +300,11 @@ export default function MyRecordScreen() {
             {photos.length === 0 ? (
                <View style={styles.emptyPhotoBox}>
                   <ThemedText type="default" style={{color: '#888'}}>還沒有照片喔，快去專注拍照吧！</ThemedText>
+                  {/* 若沒照片，顯示一張預設圖充數，維持版面 */}
+                  <Image
+                    source={{ uri: currentUserData.imageUri }}
+                    style={{ width: 100, height: 100, borderRadius: 8, marginTop: 10, opacity: 0.5 }}
+                  />
                </View>
             ) : (
                photos.map((photo) => (
