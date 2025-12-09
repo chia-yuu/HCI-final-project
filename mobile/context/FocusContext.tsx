@@ -7,14 +7,8 @@ import { useUser } from './UserContext';
 // 2.【設定】確保 App 在前景時，通知會以橫幅 (Banner) 顯示
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-<<<<<<< HEAD
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-=======
-    shouldShowBanner: true, // 新版寫法：顯示橫幅
-    shouldShowList: true,   // 新版寫法：保留在通知中心
->>>>>>> f60ff635496638ff4a3ecd1763aa928a29f0f9dc
+    shouldShowBanner: true, 
+    shouldShowList: true,  
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -24,12 +18,8 @@ interface FocusContextType {
   isFocusing: boolean;
   seconds: number;
   startFocus: () => void;
-<<<<<<< HEAD
   stopFocus: (mode: 'pause' | 'end', photoBase64?: string, description?: string) => Promise<void>;
 
-=======
-  stopFocus: (mode: 'pause' | 'end', photoBase64?: string) => Promise<void>;
->>>>>>> f60ff635496638ff4a3ecd1763aa928a29f0f9dc
 }
 const FocusContext = createContext<FocusContextType | undefined>(undefined);
 
@@ -180,18 +170,11 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (e) { console.error("Status update failed", e); }
   };
 
-<<<<<<< HEAD
   // === 停止/暫停專注 ===
   const stopFocus = async (mode: 'pause' | 'end', photoBase64?: string, description?: string) => {
     // ... (前面的計時器歸零邏輯不變) ...
     //await Notifications.cancelAllScheduledNotificationsAsync();
 
-=======
-  // =======================================================
-  // [保留] 原本的 stopFocus (完全沒動)
-  // =======================================================
-  const stopFocus = async (mode: 'pause' | 'end', photoBase64?: string) => {
->>>>>>> f60ff635496638ff4a3ecd1763aa928a29f0f9dc
     const finalDuration = startTimeRef.current 
       ? Math.floor((Date.now() - startTimeRef.current) / 1000) 
       : 0;
@@ -205,7 +188,6 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
       setIsResting(true);
       restStartTimeRef.current = Date.now();
       
-<<<<<<< HEAD
     await Notifications.scheduleNotificationAsync({
       content: {
         title: 'FocusMate 提醒 🐱',
@@ -232,21 +214,6 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
       },
     });
 
-=======
-      // 設定休息提醒通知
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'FocusMate 提醒 🐱',
-          body: '已經休息 1 分鐘了喔，該回來了！',
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 60,       
-          repeats: false,
-        },
-      });
->>>>>>> f60ff635496638ff4a3ecd1763aa928a29f0f9dc
 
     } else {
       // === [結束模式] ===
@@ -267,7 +234,6 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (photoBase64) {
-<<<<<<< HEAD
         console.log("正在上傳照片...");
         await api.post('/camera/upload', {
           user_id: 1, // 預設 User
@@ -275,10 +241,6 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
           description: description || ""
         });
         console.log("照片上傳成功！");
-=======
-        // ... (上傳照片邏輯)
-        await api.post('/camera/upload', { user_id: userId || 1, image_base64: photoBase64 });
->>>>>>> f60ff635496638ff4a3ecd1763aa928a29f0f9dc
       }
 
       const data = response.data;

@@ -716,15 +716,6 @@ async def get_current_user_id(user_id: int = Query(1, description="前端傳入�
     """
     return CurrentUserId(user_id=user_id)
 
-<<<<<<< HEAD
-        return UserRecordStatus(
-            title_name=row['title'] if row['title'] else "無稱號",
-            badge_count=row['badge'] if row['badge'] else 0
-        )
-    
-
-    
-=======
 # 1. 修改獲取用戶狀態的 API (讓它讀取真實 DB 數據)
 # @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
 # async def get_user_record_status(user_id: int = Query(1)):
@@ -741,4 +732,3 @@ async def get_current_user_id(user_id: int = Query(1, description="前端傳入�
 #             title_name=row['title'] if row['title'] else "無稱號",
 #             badge_count=row['badge'] if row['badge'] else 0
 #         )
->>>>>>> f60ff635496638ff4a3ecd1763aa928a29f0f9dc
