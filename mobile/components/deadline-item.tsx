@@ -128,7 +128,7 @@ export default function DeadlineItem({
       {isEditing &&
         <TouchableOpacity
             onPress={() => onClickRemoveBox(item)}
-            style={[styles.editingBox, {marginRight: item.display_order == 1 || item.display_order == 2? -17 : 12}]}
+            style={[styles.editingBox, {marginRight: urgentLevel == 1 || urgentLevel == 2? -17 : 12}]}
         >
             <Icon name="delete" size={24} color={"#707177"}/>
         </TouchableOpacity>
