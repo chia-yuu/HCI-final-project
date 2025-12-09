@@ -333,45 +333,74 @@ async def send_message(msg: MessageCreate):
 
     return {"status": "success", "message": "Message sent"}
 
+@app.get("/api/v1/messages/unread/latest")
+async def get_latest_unread_message(user_id: int = Query(..., description="接收者的 User ID")):
+    """
+    [Polling 專用] 獲取該用戶「最新」的一則未讀訊息。
+    用途：前端每幾秒呼叫一次，檢查是否有新通知。
+    注意：此 API **不會** 將訊息標記為已讀。
+    """
+    async with app.state.db_pool.acquire() as conn:
+        # 查詢邏輯：
+        # 1. 找 receiver_id 是我自己 ($1)
+        # 2. 找 is_read = False
+        # 3. JOIN users 表拿到寄件者名字 (sender_name)
+        # 4. ORDER BY created_at DESC (倒序，拿最新的)
+        # 5. LIMIT 1 (只需要一筆來做通知)
+        
+        row = await conn.fetchrow("""
+            SELECT 
+                m.id, 
+                m.content, 
+                m.created_at, 
+                m.sender_id,
+                u.name as sender_name
+            FROM messages m
+            JOIN users u ON m.sender_id = u.user_id
+            WHERE m.receiver_id = $1 
+              AND m.is_read = FALSE
+            ORDER BY m.created_at DESC
+            LIMIT 1
+        """, user_id)
+
+        # 回傳格式配合前端: { has_unread: bool, data: object }
+        if row:
+            return {
+                "has_unread": True,
+                "data": dict(row)
+            }
+        else:
+            return {
+                "has_unread": False,
+                "data": None
+            }
+
 @app.get("/api/v1/messages/unread/{user_id}")
 async def get_unread_messages(user_id: int):
     """
-    [Polling] 獲取指定用戶的「未讀」訊息。
-    邏輯：
-    1. 撈出 receiver_id = user_id 且 is_read = False 的訊息。
-    2. 回傳給前端。
-    3. (重要) 同時將這些訊息在資料庫改為 is_read = True，避免下次重複撈取。
+    [Polling] 僅獲取指定用戶的「未讀」訊息。
+    注意：此 API 不會修改已讀狀態！
     """
     async with app.state.db_pool.acquire() as conn:
-        # --- 修改重點：加入 JOIN users 來取得 sender_name ---
         rows = await conn.fetch("""
             SELECT 
                 m.id, 
                 m.sender_id, 
                 m.content, 
                 m.created_at,
-                u.name as sender_name  -- 多撈這一個欄位
+                u.name as sender_name
             FROM messages m
             JOIN users u ON m.sender_id = u.user_id
             WHERE m.receiver_id = $1 AND m.is_read = FALSE
-            ORDER BY m.created_at ASC
+            ORDER BY m.created_at DESC  -- 改成 DESC 抓最新的比較符合通知邏輯
+            LIMIT 1                     -- 為了通知，我們通常只需要最新的一則
         """, user_id)
 
         if not rows:
-            return []
+            return None # 或是 return {}，看你前端習慣怎麼接
 
-        messages = [dict(row) for row in rows]
-        
-        # 標記已讀的邏輯保持不變
-        msg_ids = [m['id'] for m in messages]
-        if msg_ids:
-            await conn.execute("""
-                UPDATE messages 
-                SET is_read = TRUE 
-                WHERE id = ANY($1::int[])
-            """, msg_ids)
-
-        return messages
+        # 直接回傳最新的一筆資料
+        return dict(rows[0])
 
 # === focus mode的功能(by sandra) ===
 
