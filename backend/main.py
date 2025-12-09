@@ -100,6 +100,27 @@ async def startup():
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
         """)
+        # messages
+        # 修正重點 1: PostgreSQL 使用 SERIAL 來自動遞增，而不是 AUTOINCREMENT
+        # 修正重點 2: Boolean 預設值建議使用 FALSE，而不是 0
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id           SERIAL PRIMARY KEY,
+                sender_id    INTEGER NOT NULL,
+                receiver_id  INTEGER NOT NULL,
+                content      TEXT NOT NULL,
+                is_read      BOOLEAN DEFAULT FALSE,
+                created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (sender_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                FOREIGN KEY (receiver_id) REFERENCES users(user_id) ON DELETE CASCADE
+            );
+        """)
+
+        # 建立索引 (Index)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_messages_receiver_read 
+            ON messages (receiver_id, is_read);
+        """)
 
         # deadlines
         await conn.execute("""
@@ -149,6 +170,7 @@ async def startup():
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             );
         """)
+        
 
         # 💡 [新增] 確保 User 1 和 User 2 存在 (解決 ForeignKeyViolationError)
         await conn.execute("""
