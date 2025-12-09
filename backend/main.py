@@ -40,6 +40,9 @@ class DeadlineItem(BaseModel):
 class UserRecordStatus(BaseModel):
     title_name: str
     badge_count: int
+
+class CurrentUserId(BaseModel):
+    user_id: int
 # 💡 新增：好友狀態回應模型，用於 /api/v1/friends/status
 class FriendStatusResponse(BaseModel):
     friend_id: int
@@ -678,19 +681,26 @@ async def get_recent_picture(user_id: int):
 #         badge_count=18
 #     )
 
-# 1. 修改獲取用戶狀態的 API (讓它讀取真實 DB 數據)
-@app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
-async def get_user_record_status(user_id: int = Query(1)):
-    async with app.state.db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            SELECT title, badge FROM users WHERE user_id = $1
-        """, user_id)
-        
-        if not row:
-            # 如果找不到人，回傳預設值
-            return UserRecordStatus(title_name="新手", badge_count=0)
+@app.get("/api/v1/current-user-id", response_model=CurrentUserId)
+async def get_current_user_id(user_id: int = Query(1, description="前端傳入的當前用戶 ID")):
+    """
+    僅用於回傳前端當前持有的 user_id。
+    """
+    return CurrentUserId(user_id=user_id)
 
-        return UserRecordStatus(
-            title_name=row['title'] if row['title'] else "無稱號",
-            badge_count=row['badge'] if row['badge'] else 0
-        )
+# 1. 修改獲取用戶狀態的 API (讓它讀取真實 DB 數據)
+# @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
+# async def get_user_record_status(user_id: int = Query(1)):
+#     async with app.state.db_pool.acquire() as conn:
+#         row = await conn.fetchrow("""
+#             SELECT title, badge FROM users WHERE user_id = $1
+#         """, user_id)
+        
+#         if not row:
+#             # 如果找不到人，回傳預設值
+#             return UserRecordStatus(title_name="新手", badge_count=0)
+
+#         return UserRecordStatus(
+#             title_name=row['title'] if row['title'] else "無稱號",
+#             badge_count=row['badge'] if row['badge'] else 0
+#         )
