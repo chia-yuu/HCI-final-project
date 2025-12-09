@@ -7,8 +7,8 @@ import { useUser } from './UserContext';
 // 設定通知行為
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
+    shouldShowBanner: true, 
+    shouldShowList: true,  
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),
@@ -18,7 +18,8 @@ interface FocusContextType {
   isFocusing: boolean;
   seconds: number;
   startFocus: () => void;
-  stopFocus: (mode: 'pause' | 'end', photoBase64?: string) => Promise<void>;
+  stopFocus: (mode: 'pause' | 'end', photoBase64?: string, description?: string) => Promise<void>;
+
 }
 const FocusContext = createContext<FocusContextType | undefined>(undefined);
 
@@ -176,8 +177,15 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
     try { await api.post('/user/status', { is_studying: true, user_id: userId }); } catch (e) {}
   };
 
-  const stopFocus = async (mode: 'pause' | 'end', photoBase64?: string) => {
-    const finalDuration = startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : 0;
+  // === 停止/暫停專注 ===
+  const stopFocus = async (mode: 'pause' | 'end', photoBase64?: string, description?: string) => {
+    // ... (前面的計時器歸零邏輯不變) ...
+    //await Notifications.cancelAllScheduledNotificationsAsync();
+
+    const finalDuration = startTimeRef.current 
+      ? Math.floor((Date.now() - startTimeRef.current) / 1000) 
+      : 0;
+
     setIsFocusing(false);
     setSeconds(0);
     startTimeRef.current = null;
@@ -185,14 +193,34 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
     if (mode === 'pause') {
       setIsResting(true);
       restStartTimeRef.current = Date.now();
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'FocusMate 提醒 🐱',
-          body: '已經休息 1 分鐘了喔，該回來了！',
-          sound: true,
-        },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 60, repeats: false },
-      });
+      
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'FocusMate 提醒 🐱',
+        body: '已經休息 1 分鐘了喔，該回來了！',
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 7,       // 7秒
+        repeats: false,
+      },
+    });
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'FocusMate 提醒 🐱',
+        body: '⚠️12/16有一項deadline (HCI報告)，請盡快回來！',
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 14,       // 14秒
+        repeats: false,
+      },
+    });
+
+
     } else {
       setIsResting(false);
       restStartTimeRef.current = null;
@@ -205,7 +233,16 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
         note: mode === 'pause' ? "暫停休息" : "結束專注",
         user_id: userId 
       });
-      if (photoBase64) await api.post('/camera/upload', { user_id: userId || 1, image_base64: photoBase64 });
+
+      if (photoBase64) {
+        console.log("正在上傳照片...");
+        await api.post('/camera/upload', {
+          user_id: 1, // 預設 User
+          image_base64: photoBase64,
+          description: description || ""
+        });
+        console.log("照片上傳成功！");
+      }
 
       const data = response.data;
       let msg = `此次專注：${data.minutes} 分鐘`;

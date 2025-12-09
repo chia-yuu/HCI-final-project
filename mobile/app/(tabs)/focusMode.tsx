@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Audio } from 'expo-av'; // [新增] 音樂套件
+import { Ionicons } from '@expo/vector-icons'; // [新增] 圖標
+import { useRouter } from 'expo-router';
 import PageTemplate from '@/components/page-template';
 import { useFocus } from '../../context/FocusContext';
 import api from '../../api/api';
-import { router } from 'expo-router';
 import { useUser } from '../../context/UserContext';
 
 interface TodoItem {
@@ -15,24 +17,61 @@ interface TodoItem {
 }
 
 export default function FocusModeScreen() {
+  const router = useRouter();
   const { isFocusing, seconds, startFocus, stopFocus } = useFocus();
-  const [deadlines, setDeadlines] = useState<TodoItem[]>([]);
+  const { userId } = useUser();
   
-  // modalType: 'pause' (休息) | 'end' (結束)
+  const [deadlines, setDeadlines] = useState<TodoItem[]>([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalType, setModalType] = useState<'pause' | 'end'>('pause');
-  const { userId } = useUser();
+
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+
   useFocusEffect(
     React.useCallback(() => {
       fetchDeadlines();
     }, [userId])
   );
 
+  useEffect(() => {
+    return sound
+      ? () => {
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
+
+  // [新增] 播放/暫停白噪音邏輯
+  const toggleMusic = async () => {
+    try {
+      if (sound) {
+        if (isPlayingMusic) {
+          await sound.pauseAsync();
+          setIsPlayingMusic(false);
+        } else {
+          await sound.playAsync();
+          setIsPlayingMusic(true);
+        }
+      } else {
+        // 播音樂
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: 'https://www.soundjay.com/nature/rain-01.mp3' }, 
+          { shouldPlay: true, isLooping: true }
+        );
+        setSound(newSound);
+        setIsPlayingMusic(true);
+      }
+    } catch (error) {
+      console.error("播放失敗:", error);
+    }
+  };
+
   const fetchDeadlines = async () => {
     if (userId === null) return;
-  try {
+    try {
       const response = await api.get('/deadlines', {
-        params: { user_id: userId } //修正：傳遞 user_id 參數
+        params: { user_id: userId } 
       });
       const todos = response.data.filter((item: TodoItem) => !item.is_done).slice(0, 3);
       setDeadlines(todos);
@@ -48,58 +87,47 @@ export default function FocusModeScreen() {
     return `${hours.toString().padStart(2, '0')} : ${minutes.toString().padStart(2, '0')} : ${secs.toString().padStart(2, '0')}`;
   };
 
-  // === 按鈕的部分 ===
-  
-  // 按下"休息"
   const handleRestPress = () => {
-    setModalType('pause'); // 設為休息模式
+    setModalType('pause');
     setShowConfirmModal(true);
   };
 
-  // 按下"結束"
   const handleEndPress = () => {
-    setModalType('end'); // 設為結束模式
+    setModalType('end');
     setShowConfirmModal(true);
   };
 
-  // 決定繼續專注-> 關閉通知
   const handleContinueFocus = () => setShowConfirmModal(false);
 
-  // 確認要走了 
-  // const handleConfirmAction = () => {
-  //   setShowConfirmModal(false);
-  //   stopFocus(modalType); 
-  // };
-// const handleConfirmAction = async () => { // 💡 必須改為 async
-//   setShowConfirmModal(false);
-
-//   // 1. 停止計時並儲存數據 (假設 stopFocus 會回傳 true/false)
-//   const savedSuccessfully = await stopFocus(modalType); 
-
-//   // 2. 只有在按下「結束」並儲存成功時才導航到相機
-//   if (modalType === 'end' && savedSuccessfully) {
-//     // 💡 導航到相機畫面
-//     router.push('/CameraScreen'); 
-//   }
-  
-//   // 3. 如果是「休息」，則回到主頁或停留在這裡
-//   // 如果是暫停，且數據未成功儲存，則可能要給予錯誤提示
-// };
-const handleConfirmAction = () => {
+  const handleConfirmAction = () => {
     setShowConfirmModal(false);
-    // stopFocus(modalType); 
     router.push({
         pathname: "/camera",
         params: { mode: modalType }
     });
   };
- 
+
   return (
     <PageTemplate title="專注模式" selectedTab="focus">
+      
+      {/* [新增] 音樂按鈕 (放在 ScrollView 外面或裡面都可以，這裡放在裡面並用絕對定位固定在右上) */}
+      <View style={{zIndex: 10, elevation: 10}}> 
+          <TouchableOpacity 
+            style={[styles.musicButton, isPlayingMusic && styles.musicButtonActive]} 
+            onPress={toggleMusic}
+          >
+            <Ionicons 
+                name={isPlayingMusic ? "musical-notes" : "musical-notes-outline"} 
+                size={24} 
+                color={isPlayingMusic ? "#fff" : "#0D1B2A"} 
+            />
+          </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={styles.container}>
         
         {!isFocusing ? (
-          // ===init的畫面 ===
+          // === 準備畫面 ===
           <View style={styles.centerContent}>
             <View style={styles.circle}>
                 <Text style={styles.mainTitle}>開始專注!</Text>
@@ -108,7 +136,6 @@ const handleConfirmAction = () => {
               <Text style={styles.startButtonText}>開始</Text>
             </TouchableOpacity>
 
-            {/* 待辦事項列表 (準備畫面) */}
             <View style={styles.deadlineBox}>
                 <Text style={styles.deadlineTitle}>待辦事項提醒：</Text>
                 {deadlines.length === 0 ? <Text style={{color:'#999'}}>暫無待辦事項</Text> : 
@@ -119,7 +146,7 @@ const handleConfirmAction = () => {
             </View>
           </View>
         ) : (
-          // === 計時中的畫面 ===
+          // === 計時中畫面 ===
           <View style={styles.centerContent}>
             <View style={styles.circle}>
                 <Text style={styles.timerLabel}>持續專注時間:</Text>
@@ -147,11 +174,10 @@ const handleConfirmAction = () => {
           </View>
         )}
 
-        {/* 不同通知 */}
+        {/* Modal */}
         <Modal transparent={true} visible={showConfirmModal} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              {/* 標題根據模式改變 */}
               <Text style={styles.modalTitle}>
                 {modalType === 'pause' ? '確認暫停專注?' : '確認結束專注?'}
               </Text>
@@ -164,7 +190,6 @@ const handleConfirmAction = () => {
               </Text>
 
               <View style={styles.modalButtons}>
-                {/* 左下選擇 */}
                 <TouchableOpacity 
                     style={[styles.modalButton, {backgroundColor: '#415a77'}]} 
                     onPress={handleConfirmAction}
@@ -174,7 +199,6 @@ const handleConfirmAction = () => {
                     </Text>
                 </TouchableOpacity>
 
-                {/* 右下選擇 */}
                 <TouchableOpacity 
                     style={[styles.modalButton, {backgroundColor: '#e0fbfc'}]} 
                     onPress={handleContinueFocus}
@@ -194,6 +218,31 @@ const handleConfirmAction = () => {
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 20, alignItems: 'center' },
   centerContent: { alignItems: 'center', width: '100%', marginTop: 20 },
+  
+  musicButton: {
+    position: 'absolute',
+    top: 10,
+    right: 100, 
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    elevation: 5, // Android 陰影
+    shadowColor: '#000', // iOS 陰影
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  // [新增] 播放時的樣式 (變色)
+  musicButtonActive: {
+    backgroundColor: '#415a77',
+    borderColor: '#415a77',
+  },
+
   circle: { width: 250, height: 250, borderRadius: 125, borderWidth: 4, borderColor: '#5c6b73', justifyContent: 'center', alignItems: 'center', marginBottom: 30, backgroundColor: '#5c6b73' },
   mainTitle: { fontSize: 24, fontWeight: 'bold', color:'#0D1B2A' },
   timerLabel: { fontSize: 16, color:'#0D1B2A', marginBottom: 5 },
