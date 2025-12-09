@@ -337,6 +337,46 @@ async def send_message(msg: MessageCreate):
 
     return {"status": "success", "message": "Message sent"}
 
+@app.get("/api/v1/messages/unread/{user_id}")
+async def get_unread_messages(user_id: int):
+    """
+    [Polling] 獲取指定用戶的「未讀」訊息。
+    邏輯：
+    1. 撈出 receiver_id = user_id 且 is_read = False 的訊息。
+    2. 回傳給前端。
+    3. (重要) 同時將這些訊息在資料庫改為 is_read = True，避免下次重複撈取。
+    """
+    async with app.state.db_pool.acquire() as conn:
+        # --- 修改重點：加入 JOIN users 來取得 sender_name ---
+        rows = await conn.fetch("""
+            SELECT 
+                m.id, 
+                m.sender_id, 
+                m.content, 
+                m.created_at,
+                u.name as sender_name  -- 多撈這一個欄位
+            FROM messages m
+            JOIN users u ON m.sender_id = u.user_id
+            WHERE m.receiver_id = $1 AND m.is_read = FALSE
+            ORDER BY m.created_at ASC
+        """, user_id)
+
+        if not rows:
+            return []
+
+        messages = [dict(row) for row in rows]
+        
+        # 標記已讀的邏輯保持不變
+        msg_ids = [m['id'] for m in messages]
+        if msg_ids:
+            await conn.execute("""
+                UPDATE messages 
+                SET is_read = TRUE 
+                WHERE id = ANY($1::int[])
+            """, msg_ids)
+
+        return messages
+
 # === focus mode的功能(by sandra) ===
 
 # 取得 Deadlines (放在下面的list)

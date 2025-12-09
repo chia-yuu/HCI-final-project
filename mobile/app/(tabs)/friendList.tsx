@@ -9,11 +9,22 @@ import {
   TouchableWithoutFeedback,
   Alert,
   FlatList,
-  ActivityIndicator, // 引入 Loading 圖示
+  ActivityIndicator,
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import api from '../../api/api';
 import { useUser } from '../../context/UserContext';
+// 1. 引入 Notifications
+import * as Notifications from 'expo-notifications';
+
+// 2. 設定通知行為 (確保 App 開著的時候也會跳出通知)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true, // 顯示橫幅
+    shouldPlaySound: true, // 播放聲音
+    shouldSetBadge: false,
+  }),
+});
 
 // --- 1. 定義 Props 介面 (ReminderModal) ---
 interface ReminderModalProps {
@@ -145,15 +156,16 @@ const fetchFriendStatuses = async (friendIds: number[]): Promise<FriendStatusAPI
   }
 };
 
-
+// --- FriendListScreen 主程式 ---
 export default function FriendListScreen() {
   const { userId } = useUser();
   const [friendsList, setFriendsList] = useState<FriendStatusAPIResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // [新增] 儲存自己的徽章數量
+  
+  // 儲存自己的徽章數量
   const [myBadgeCount, setMyBadgeCount] = useState(0);
 
-  // [新增] 抓取自己徽章的函式
+  // 抓取自己徽章的函式
   const fetchMyBadge = async () => {
     if (!userId) return;
     try {
@@ -164,7 +176,9 @@ export default function FriendListScreen() {
     }
   };
 
-  // 載入資料的 Effect
+  // ---------------------------------------------------
+  // 唯一的 useEffect: 負責載入好友列表與自己的徽章
+  // ---------------------------------------------------
   useEffect(() => {
     let isMounted = true; // 防止組件卸載後更新狀態
 
@@ -194,7 +208,8 @@ export default function FriendListScreen() {
       } finally {
         if (isMounted) setIsLoading(false);
       }
-      // [新增] 順便載入自己的徽章
+      
+      // [保留] 順便載入自己的徽章
       await fetchMyBadge();
     };
 
@@ -202,6 +217,8 @@ export default function FriendListScreen() {
 
     return () => { isMounted = false; };
   }, [userId]); 
+
+  // (原本的第二個 useEffect 已刪除，因為已經搬到 Global Context 了)
 
   const [modalVisible, setModalVisible] = useState(false);
   const [targetFriend, setTargetFriend] = useState('');
@@ -226,16 +243,6 @@ export default function FriendListScreen() {
     setMessage(''); 
   };
 
-  // const handleSend = () => {
-  //   if (message.trim().length > 0) { 
-  //      console.log(`Sending to ID: ${targetFriendId} from User: ${userId}`);
-  //      setModalVisible(false); 
-  //      Alert.alert('傳送成功 🎉', `已成功提醒 ${targetFriend}！`, [{ text: '好的' }]);
-  //   } else {
-  //      Alert.alert('提示', '請輸入傳送訊息！'); 
-  //   }
-  // };
-  // 請將這段程式碼替換原本的 handleSend
   const handleSend = async () => {
       // 1. 防呆檢查：訊息不能為空
       if (message.trim().length === 0) {
@@ -253,19 +260,21 @@ export default function FriendListScreen() {
           console.log(`[API] 正在傳送訊息... 寄件人:${userId}, 收件人:${targetFriendId}, 內容:${message}`);
 
           // 3. 呼叫後端 API
-          // 注意：這裡的 payload 欄位名稱必須跟後端 Pydantic model 一模一樣
           const response = await api.post('/api/v1/messages', {
-              sender_id: userId,        // 對應後端 MessageCreate.sender_id
-              receiver_id: targetFriendId, // 對應後端 MessageCreate.receiver_id
-              content: message          // 對應後端 MessageCreate.content
+              sender_id: userId,
+              receiver_id: targetFriendId,
+              content: message
           });
 
           console.log('[API] 傳送成功:', response.data);
 
           // 4. 成功後的 UI 處理
           setModalVisible(false); // 關閉 Modal
-          setMessage('');         // 清空輸入框，避免下次打開還有舊字
+          setMessage('');         // 清空輸入框
           
+          // 更新本地顯示的徽章數量 (不需要重 call API)
+          setMyBadgeCount(prev => Math.max(0, prev - 1));
+
           Alert.alert(
               '傳送成功 🎉', 
               `已成功提醒 ${targetFriend}！\n(已消耗一枚好寶寶徽章)`, 
@@ -315,19 +324,18 @@ export default function FriendListScreen() {
       );
   }
 
-  // 安全的渲染空列表訊息，避免 "Text strings must be rendered..." 錯誤
   const renderEmptyComponent = () => {
     return (
       <View style={{ alignItems: 'center', marginTop: 20 }}>
         {isLoading ? (
-           <>
-             <ActivityIndicator size="small" color="#666" />
-             <Text style={styles.loadingText}>好友列表載入中...</Text>
-           </>
+            <>
+              <ActivityIndicator size="small" color="#666" />
+              <Text style={styles.loadingText}>好友列表載入中...</Text>
+            </>
         ) : (
-           <Text style={styles.loadingText}>
-             {userId ? '你還沒有好友喔！' : '無法載入用戶資訊'}
-           </Text>
+            <Text style={styles.loadingText}>
+              {userId ? '你還沒有好友喔！' : '無法載入用戶資訊'}
+            </Text>
         )}
       </View>
     );
