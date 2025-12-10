@@ -292,7 +292,7 @@ export default function MyRecordScreen() {
           {/* [修改] 今日回顧：改為顯示真實照片牆 */}
           {/* ---------------------------------------------------- */}
           <ThemedText type="default" style={styles.sectionHeader}>
-            今日回顧 ({photos.length})
+            進度回顧 ({photos.length})
           </ThemedText>
 
           {/* 照片牆容器，marginLeft 30 為了對齊上面的圖表 */}

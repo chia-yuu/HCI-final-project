@@ -444,7 +444,7 @@ async def mark_single_message_read(message_id: int):
 async def get_deadlines(user_id: int = Query(..., description="要查詢的使用者 ID")): # 💡 修正 1: 接收 user_id
     async with app.state.db_pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, task as thing, is_done, display_order 
+            SELECT id, task as thing, is_done, display_order, deadline_date 
             FROM deadlines 
             WHERE user_id = $1 AND current_doing = true
             ORDER BY display_order ASC
@@ -471,7 +471,7 @@ async def save_focus_session(session: FocusSession):
         # 計算時間與徽章
         minutes = session.duration_seconds // 60
         earned_badge = False
-        if minutes >= 60:
+        if minutes >= 5:
             earned_badge = True
 
         # 拿到徽章，加到badge

@@ -21,6 +21,15 @@ interface FocusContextType {
   stopFocus: (mode: 'pause' | 'end', photoBase64?: string, description?: string) => Promise<void>;
 
 }
+
+// 定義 Deadline 型別 (為了在 Context 裡使用)
+interface DeadlineItem {
+    id: number;
+    thing: string;
+    is_done: boolean;
+    deadline_date?: string; // 後端傳來的日期字串
+}
+
 const FocusContext = createContext<FocusContextType | undefined>(undefined);
 
 export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
@@ -207,18 +216,65 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
       },
     });
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'FocusMate 提醒 🐱',
-        body: '⚠️12/16有一項deadline (HCI報告)，請盡快回來！',
-        sound: true,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 14,       // 14秒
-        repeats: false,
-      },
-    });
+    // await Notifications.scheduleNotificationAsync({
+    //   content: {
+    //     title: 'FocusMate 提醒 🐱',
+    //     body: '⚠️12/16有一項deadline (HCI報告)，請盡快回來！',
+    //     sound: true,
+    //   },
+    //   trigger: {
+    //     type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+    //     seconds: 14,       // 14秒
+    //     repeats: false,
+    //   },
+    // });
+
+    try {
+          console.log("正在抓取最近的 Deadline...");
+          const res = await api.get('/deadlines', { params: { user_id: userId } });
+          const allDeadlines: DeadlineItem[] = res.data;
+
+          // 過濾出未完成且有日期的事項
+          const activeDeadlines = allDeadlines.filter(item => !item.is_done && item.deadline_date);
+
+          // 排序：找出離今天最近的日期 (日期字串可以直接比較大小)
+          // 這裡簡單用字串排序，如果日期格式是 YYYY-MM-DD 這是準的
+          activeDeadlines.sort((a, b) => {
+              if (a.deadline_date! < b.deadline_date!) return -1;
+              if (a.deadline_date! > b.deadline_date!) return 1;
+              return 0;
+          });
+
+          if (activeDeadlines.length > 0) {
+              const nearest = activeDeadlines[0]; // 拿第一筆
+              const msg = `⚠️ ${nearest.deadline_date} 有 ${nearest.thing} 喔，請盡快回來！`;
+              
+              console.log("設定 Deadline 通知:", msg);
+
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: 'Deadline 提醒 🔥',
+                    body: msg,
+                    sound: true,
+                },
+                trigger: {
+                    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                    seconds: 14, 
+                    repeats: false,
+                },
+              });
+          } else {
+              // 如果沒有 Deadline，給一個預設的
+              console.log("沒有找到 Deadline，設定預設通知");
+              await Notifications.scheduleNotificationAsync({
+                content: { title: 'FocusMate 提醒', body: '休息夠久囉，回來繼續努力吧！' },
+                trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 14, repeats: false },
+              });
+          }
+
+      } catch (err) {
+          console.error("抓取 Deadline 失敗，無法設定動態通知", err);
+      }
 
 
     } else {
@@ -237,7 +293,7 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
       if (photoBase64) {
         console.log("正在上傳照片...");
         await api.post('/camera/upload', {
-          user_id: 1, // 預設 User
+          user_id: userId ,
           image_base64: photoBase64,
           description: description || ""
         });

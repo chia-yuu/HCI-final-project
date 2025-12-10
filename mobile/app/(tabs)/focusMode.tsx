@@ -73,7 +73,7 @@ export default function FocusModeScreen() {
       const response = await api.get('/deadlines', {
         params: { user_id: userId } 
       });
-      const todos = response.data.filter((item: TodoItem) => !item.is_done).slice(0, 3);
+      const todos = response.data.filter((item: TodoItem) => !item.is_done);
       setDeadlines(todos);
     } catch (error) {
       console.error("抓不到清單TAT", error);
@@ -137,10 +137,10 @@ export default function FocusModeScreen() {
             </TouchableOpacity>
 
             <View style={styles.deadlineBox}>
-                <Text style={styles.deadlineTitle}>待辦事項提醒：</Text>
-                {deadlines.length === 0 ? <Text style={{color:'#999'}}>暫無待辦事項</Text> : 
+                <Text style={styles.deadlineTitle}>💡 待辦事項</Text>
+                {deadlines.length === 0 ? <Text style={{color:'#999'}}>去任務清單選擇現在要做的事項吧！</Text> : 
                   deadlines.map(item => (
-                    <Text key={item.id} style={styles.deadlineText}>⏳ {item.thing}</Text>
+                    <Text key={item.id} style={styles.deadlineText}>⏳ {item.deadline_date ? `${item.deadline_date} ` : ''}{item.thing}</Text>
                   ))
                 }
             </View>
@@ -164,10 +164,10 @@ export default function FocusModeScreen() {
             </View>
 
             <View style={styles.deadlineBox}>
-                <Text style={styles.deadlineTitle}>待辦事項：</Text>
-                {deadlines.length === 0 ? <Text style={{color:'#999'}}>暫無待辦事項</Text> : 
+                <Text style={styles.deadlineTitle}>💡 待辦事項：</Text>
+                {deadlines.length === 0 ? <Text style={{color:'#999'}}>去任務清單選擇現在要做的事項吧！</Text> : 
                   deadlines.map(item => (
-                    <Text key={item.id} style={styles.deadlineText}>⏳ {item.thing}</Text>
+                    <Text key={item.id} style={styles.deadlineText}>⏳ {item.deadline_date ? `${item.deadline_date} ` : ''}{item.thing}</Text>
                   ))
                 }
             </View>
