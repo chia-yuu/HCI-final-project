@@ -5,6 +5,12 @@ import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { LogBox } from "react-native";
+
+LogBox.ignoreLogs([
+  "Text strings must be rendered within a <Text> component",
+  "expo-notifications: Android Push notifications (remote notifications) functionality provided by expo-notifications was removed from Expo Go with the release of SDK 53. Use a development build instead of Expo Go. Read more at https://docs.expo.dev/develop/development-builds/introduction/."
+]);
 
 type Props = {
     title: string;
