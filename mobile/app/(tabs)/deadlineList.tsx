@@ -42,7 +42,6 @@ export default function DeadlineListScreen() {
     try {
         // 💡 傳遞 user_id 作為查詢參數
         const response = await api.get('/deadlines/get-deadlines', { params: { user_id: userId } });
-        console.log(response.data[1]);
         setDeadlines(response.data);
     } catch (error) {
       console.error("fetchDeadlines() in deadlineList.tsx: 抓不到清單: ", error);
