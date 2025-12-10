@@ -37,6 +37,7 @@ export default function DeadlineItem({
   // 震動效果 (urgent item)
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const [urgentLevel, setUrgentLevel] = useState<1 | 2 | 0>(0);
+  const [day, setDay] = useState(0);
   useEffect(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -45,6 +46,7 @@ export default function DeadlineItem({
 
     const diffTime = deadline.getTime() - today.getTime();
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    setDay(diffDays);
 
     if(item.is_done){
       setUrgentLevel(0);
@@ -182,7 +184,7 @@ export default function DeadlineItem({
             }}
             style={styles.textContainer}
       >
-        <Text style={[styles.dateText, item.is_done && { color: "#c9cad5"}]}>{item.deadline_date ?? ""}</Text>
+        <Text style={[styles.dateText, item.is_done && { color: "#c9cad5"}]}>{item.deadline_date}  剩下 {day} 天</Text>
         <Text style={[styles.taskText, item.is_done && { textDecorationLine: "line-through", color: "#b3b4bd"}]}>
           {item.thing}
         </Text>
