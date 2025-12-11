@@ -164,7 +164,7 @@ export default function FocusModeScreen() {
             </View>
 
             <View style={styles.deadlineBox}>
-                <Text style={styles.deadlineTitle}>💡 待辦事項：</Text>
+                <Text style={styles.deadlineTitle}>▶️ 進行中：</Text>
                 {deadlines.length === 0 ? <Text style={{color:'#999'}}>去任務清單選擇現在要做的事項吧！</Text> : 
                   deadlines.map(item => (
                     <Text key={item.id} style={styles.deadlineText}>⏳ {item.deadline_date ? `${item.deadline_date} ` : ''}{item.thing}</Text>
