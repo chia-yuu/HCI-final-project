@@ -78,6 +78,11 @@ async def startup():
                 badge INTEGER
             );
         """)
+
+        await conn.execute("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS is_breaking BOOLEAN;
+        """)
         
         # friends
         await conn.execute("""

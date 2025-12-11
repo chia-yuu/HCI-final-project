@@ -361,20 +361,7 @@ export default function MyRecordScreen() {
       </Modal>
 
       {/* 稱號 Modal (保持不變) */}
-      <Modal animationType="fade" transparent={true} visible={isTitleMenuVisible} onRequestClose={() => setIsTitleMenuVisible(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPressOut={() => setIsTitleMenuVisible(false)}>
-          <View style={styles.titleModalContent}>
-            <ThemedText type="default" style={styles.modalHeader}>選擇稱號</ThemedText>
-            {AVAILABLE_TITLES.map((title) => (
-              <TouchableOpacity key={title.id} onPress={() => selectTitle(title.name)} style={styles.modalItem}>
-                <ThemedText type="default" style={{ color: title.name === titleName ? 'blue' : PRIMARY_TEXT_COLOR }}>
-                  {title.name}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      
 
     </PageTemplate>
   );
@@ -386,7 +373,7 @@ const styles = StyleSheet.create({
     marginTop: 20, 
     fontSize: 18, 
     color: PRIMARY_TEXT_COLOR,
-    marginLeft: -20, 
+    marginLeft: 20, 
     paddingLeft: 20, 
     fontWeight: 'bold',
   },
