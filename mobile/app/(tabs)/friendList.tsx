@@ -14,15 +14,13 @@ import {
 import React, { useState, useEffect } from 'react';
 import api from '../../api/api';
 import { useUser } from '../../context/UserContext';
-// 1. 引入 Notifications
 import * as Notifications from 'expo-notifications';
 
-// 2. 設定通知行為 (確保 App 開著的時候也會跳出通知)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowBanner: true, // 確保會跳出橫幅
-    shouldShowList: true,   // 確保會顯示在通知中心
-    shouldPlaySound: true, // 播放聲音
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
     shouldSetBadge: false,
   }),
 });
@@ -106,12 +104,8 @@ interface FriendStatusAPIResponse {
 const fetchFriendIds = async (userId: number | null): Promise<number[]> => {
   if (userId === null) return [];
   try {
-    console.log(`[API] 正在取得用戶 ${userId} 的好友列表...`);
     const response = await api.get(`/api/v1/new-friends/${userId}`);
     const data = response.data;
-    
-    console.log(`[API] 好友列表回應:`, data);
-
     if (data && Array.isArray(data.friend_ids)) {
       return data.friend_ids;
     }
@@ -131,14 +125,12 @@ const fetchFriendStatuses = async (friendIds: number[]): Promise<FriendStatusAPI
   const idsString = friendIds.join(',');
   
   try {
-    console.log(`[API] 正在取得好友狀態，IDs: ${idsString}`);
     const response = await api.get("/api/v1/friends/status", {
       params: { ids: idsString }
     });
     const data = response.data;
     
     if (!Array.isArray(data)) {
-       console.error("API 返回的資料格式不正確 (不是陣列)。");
        return [];
     }
     
@@ -166,26 +158,33 @@ export default function FriendListScreen() {
   // 儲存自己的徽章數量
   const [myBadgeCount, setMyBadgeCount] = useState(0);
 
-  // 抓取自己徽章的函式
-  const fetchMyBadge = async () => {
+  // [修改 1] 新增狀態：自己是否正在讀書
+  const [isUserStudying, setIsUserStudying] = useState(false);
+
+  // [修改 2] 抓取自己資訊的函式 (更名為 fetchMyInfo 比較貼切)
+  // 假設後端 /api/v1/user/record_status 回傳結構包含 { badge_count: number, is_studying: boolean }
+  const fetchMyInfo = async () => {
     if (!userId) return;
     try {
       const response = await api.get(`/api/v1/user/record_status?user_id=${userId}`);
+      
+      // 設定徽章
       setMyBadgeCount(response.data.badge_count);
+      
+      // 設定讀書狀態 (如果後端回傳欄位名稱不同，請在此調整，例如 response.data.status === 'studying')
+      setIsUserStudying(response.data.is_studying); 
+      
+      console.log(`[User Status] 徽章: ${response.data.badge_count}, 讀書中: ${response.data.is_studying}`);
     } catch (error) {
-      console.error("無法取得徽章數量:", error);
+      console.error("無法取得使用者資訊:", error);
     }
   };
 
-  // ---------------------------------------------------
-  // 唯一的 useEffect: 負責載入好友列表與自己的徽章
-  // ---------------------------------------------------
   useEffect(() => {
-    let isMounted = true; // 防止組件卸載後更新狀態
+    let isMounted = true; 
 
     const loadStatuses = async () => {
       if (!userId) {
-        console.log("等待 userId...");
         if (isMounted) setIsLoading(false);
         return;
       }
@@ -193,15 +192,12 @@ export default function FriendListScreen() {
       if (isMounted) setIsLoading(true);
 
       try {
-        // 1. 先抓 ID 列表
+        // 1. 抓好友狀態
         const friendIds = await fetchFriendIds(userId);
-        
         if (friendIds.length > 0) {
-           // 2. 再抓狀態
            const apiData = await fetchFriendStatuses(friendIds);
            if (isMounted) setFriendsList(apiData);
         } else {
-           console.log("沒有好友 ID，跳過狀態查詢");
            if (isMounted) setFriendsList([]);
         }
       } catch (error) {
@@ -210,8 +206,8 @@ export default function FriendListScreen() {
         if (isMounted) setIsLoading(false);
       }
       
-      // [保留] 順便載入自己的徽章
-      await fetchMyBadge();
+      // 2. 載入自己的資訊 (徽章 + 讀書狀態)
+      await fetchMyInfo();
     };
 
     loadStatuses();
@@ -219,25 +215,21 @@ export default function FriendListScreen() {
     return () => { isMounted = false; };
   }, [userId]); 
 
-  // (原本的第二個 useEffect 已刪除，因為已經搬到 Global Context 了)
-
   const [modalVisible, setModalVisible] = useState(false);
   const [targetFriend, setTargetFriend] = useState('');
   const [targetFriendId, setTargetFriendId] = useState<number | null>(null); 
   const [message, setMessage] = useState(''); 
   
   const handleReminderPress = (friendName: string, friendId: number) => {
-    // [邏輯判斷] 檢查徽章是否足夠
     if (myBadgeCount < 1) {
         Alert.alert(
             "徽章不足 😱", 
             "你需要至少一枚好寶寶徽章才能傳送訊息！\n快去專注賺取徽章吧～",
             [{ text: "好，我去努力" }]
         );
-        return; // 直接結束，不開啟 Modal
+        return; 
     }
 
-    // 若足夠，才執行原本的開啟視窗邏輯
     setTargetFriend(friendName);
     setTargetFriendId(friendId);
     setModalVisible(true);
@@ -245,35 +237,25 @@ export default function FriendListScreen() {
   };
 
   const handleSend = async () => {
-      // 1. 防呆檢查：訊息不能為空
       if (message.trim().length === 0) {
           Alert.alert('提示', '請輸入傳送訊息！');
           return;
       }
-
-      // 2. 防呆檢查：確保 ID 存在
       if (!userId || !targetFriendId) {
           Alert.alert('錯誤', '系統錯誤：無法識別用戶或好友 ID');
           return;
       }
 
       try {
-          console.log(`[API] 正在傳送訊息... 寄件人:${userId}, 收件人:${targetFriendId}, 內容:${message}`);
-
-          // 3. 呼叫後端 API
-          const response = await api.post('/api/v1/messages', {
+          // 呼叫後端 API
+          await api.post('/api/v1/messages', {
               sender_id: userId,
               receiver_id: targetFriendId,
               content: message
           });
 
-          console.log('[API] 傳送成功:', response.data);
-
-          // 4. 成功後的 UI 處理
-          setModalVisible(false); // 關閉 Modal
-          setMessage('');         // 清空輸入框
-          
-          // 更新本地顯示的徽章數量 (不需要重 call API)
+          setModalVisible(false); 
+          setMessage(''); 
           setMyBadgeCount(prev => Math.max(0, prev - 1));
 
           Alert.alert(
@@ -300,7 +282,11 @@ export default function FriendListScreen() {
   
   const renderFriendItem = ({ item }: { item: FriendStatusAPIResponse }) => {
       const currentStatusDisplay = getDisplayStatus(item); 
-      const isRelaxing = currentStatusDisplay === 'relaxing';
+      const isFriendRelaxing = currentStatusDisplay === 'relaxing';
+
+      // [修改 3] 按鈕顯示邏輯：好友在休息 AND 我自己"不是"在讀書
+      // 如果 isUserStudying 為 true，則 showButton 為 false
+      const showButton = isFriendRelaxing && !isUserStudying;
 
       return (
         <View style={[styles.row, styles.listItemMargin]}>
@@ -316,7 +302,8 @@ export default function FriendListScreen() {
             </Text>
           </View>
 
-          {isRelaxing && (
+          {/* 只有在 showButton 為真時才渲染 */}
+          {showButton && (
             <TouchableOpacity onPress={() => handleReminderPress(item.name, item.friend_id)}>
               <Text style={styles.emoji}>🔔</Text>
             </TouchableOpacity>
@@ -412,7 +399,6 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 26,
   },
-  // --- Modal Styles ---
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',

@@ -41,6 +41,8 @@ class DeadlineItem(BaseModel):
 class UserRecordStatus(BaseModel):
     title_name: str
     badge_count: int
+    is_studying: bool
+
 # 💡 新增：好友狀態回應模型，用於 /api/v1/friends/status
 class FriendStatusResponse(BaseModel):
     friend_id: int
@@ -733,15 +735,25 @@ async def get_recent_picture(user_id: int):
 @app.get("/api/v1/user/record_status", response_model=UserRecordStatus)
 async def get_user_record_status(user_id: int = Query(1)):
     async with app.state.db_pool.acquire() as conn:
+        # 2. 修改 SQL：增加 SELECT is_studying
+        # 請確認你的資料庫 users 表格中確實有 'is_studying' 這個欄位
         row = await conn.fetchrow("""
-            SELECT title, badge FROM users WHERE user_id = $1
+            SELECT title, badge, is_studying 
+            FROM users 
+            WHERE user_id = $1
         """, user_id)
         
         if not row:
-            # 如果找不到人，回傳預設值
-            return UserRecordStatus(title_name="新手", badge_count=0)
+            # 如果找不到人，回傳預設值 (is_studying 預設為 False)
+            return UserRecordStatus(
+                title_name="新手", 
+                badge_count=0, 
+                is_studying=False
+            )
 
         return UserRecordStatus(
             title_name=row['title'] if row['title'] else "無稱號",
-            badge_count=row['badge'] if row['badge'] else 0
+            badge_count=row['badge'] if row['badge'] else 0,
+            # 3. 回傳狀態 (如果資料庫欄位可能是 NULL，這裡做個防呆轉成 False)
+            is_studying=row['is_studying'] if row['is_studying'] is not None else False
         )
