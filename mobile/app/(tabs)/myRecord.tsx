@@ -218,26 +218,7 @@ export default function MyRecordScreen() {
         {/* 修正 1: 外層 Wrapper，整體向左移 50 單位 */}
         <View style={{ marginLeft: -50 }}>
 
-          {/* Title & Badge */}
           <View style={styles.titleBadgeRow}> 
-            <View style={styles.titleContainer}> 
-              <ThemedText style={styles.titleText}>title:</ThemedText>
-              <TouchableOpacity onPress={() => setIsTitleMenuVisible(!isTitleMenuVisible)} style={styles.dropdownToggle}>
-                <ThemedText style={styles.titleTextBold}>{titleName}</ThemedText>
-                <ThemedText style={styles.dropdownArrow}> ▼</ThemedText> 
-              </TouchableOpacity>
-              
-              {isTitleMenuVisible && (
-                <View style={styles.dropdownMenu}>
-                  {AVAILABLE_TITLES.map((title) => (
-                    <TouchableOpacity key={title.id} style={styles.dropdownItem} onPress={() => selectTitle(title.name)}>
-                      <ThemedText style={styles.dropdownItemText}>{title.name}</ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-
             <View style={styles.badgeContainer}> 
               <ThemedText style={styles.badgeIcon}>🏅</ThemedText> 
               <ThemedText style={styles.badgeCount}>X{badgeCount}</ThemedText>
@@ -370,7 +351,7 @@ export default function MyRecordScreen() {
 const styles = StyleSheet.create({
   // 統一樣式
   sectionHeader: {
-    marginTop: 20, 
+    marginTop: -20, 
     fontSize: 18, 
     color: PRIMARY_TEXT_COLOR,
     marginLeft: 20, 
@@ -378,7 +359,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   chartStyle: {
-    marginVertical: 10,
+    marginVertical: 20,
     borderRadius: 12,
     marginLeft: 30, 
   },
@@ -390,7 +371,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
     marginBottom: 10,
-    marginLeft: 30, 
+    marginLeft: -30, 
   },
   titleContainer: {
     flexDirection: 'row',
@@ -403,6 +384,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#000',
     flexShrink: 1, 
+    marginTop: -20,
     marginRight: 10,
   },
   titleText: { fontSize: 16, color: PRIMARY_TEXT_COLOR },
