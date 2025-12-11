@@ -27,7 +27,6 @@ export default function DeadlineListScreen() {
   const [deadlines, setDeadlines] = useState<TodoItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showInfoModal, setShowInfoModal] = useState(true);
   const [showPicker, setShowPicker] = useState(false);
   const [newTask, setNewTask] = useState("");
   const [newDate, setNewDate] = useState("");
@@ -483,36 +482,6 @@ export default function DeadlineListScreen() {
           </View>
         </Modal>
 
-        {/* 使用說明 (之後刪) */}
-        <Modal
-          transparent={true}
-          visible={showInfoModal}
-          animationType="fade"
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>使用說明(之後會刪掉)</Text> 
-              <Text>- 一進來可以點每個任務左邊那個暫停符號，選擇現在要做的事情。現在正在做的事情會顯示loading 的icon</Text>
-              <Text></Text>
-              <Text>- 點擊右上角的編輯icon 會進入編輯模式</Text>
-              <Text></Text>
-              <Text>- 在編輯模式中可以點左邊的框框，把完成的事情打勾</Text>
-              <Text></Text>
-              <Text>- 或是點任務名稱來修改任務(改名稱、日期)、或是點右邊的垃圾桶來刪除任務</Text>
-              <Text></Text>
-              <Text>(現在安卓和iOS 都可以正常選擇日期！)</Text>
-              <Text></Text>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#415a77" }]}
-                onPress={async () => {
-                  setShowInfoModal(false);
-                }}
-              >
-                <Text style={[styles.btnText]}>關閉</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
       </View>
     </PageTemplate>
   );
