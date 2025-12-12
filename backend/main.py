@@ -193,23 +193,23 @@ async def startup():
             VALUES (2, 'User 2', FALSE, 'Beginner', 0)
             ON CONFLICT (user_id) DO NOTHING;
         """)
-        # --- 2. [新增] 設定 User 1 的好友列表包含 2 ---
-        # 如果 user_id=1 已經在 new_friends 裡，就更新它的列表
-        await conn.execute("""
-            INSERT INTO new_friends (user_id, friend_id_list)
-            VALUES (1, '[2]') 
-            ON CONFLICT (user_id) 
-            DO UPDATE SET friend_id_list = '[2]';
-        """)
+        # # --- 2. [新增] 設定 User 1 的好友列表包含 2 ---
+        # # 如果 user_id=1 已經在 new_friends 裡，就更新它的列表
+        # await conn.execute("""
+        #     INSERT INTO new_friends (user_id, friend_id_list)
+        #     VALUES (1, '[2]') 
+        #     ON CONFLICT (user_id) 
+        #     DO UPDATE SET friend_id_list = '[2]';
+        # """)
 
-        # --- 3. [新增] 設定 User 2 的好友列表包含 1 ---
-        # 如果 user_id=2 已經在 new_friends 裡，就更新它的列表
-        await conn.execute("""
-            INSERT INTO new_friends (user_id, friend_id_list)
-            VALUES (2, '[1]') 
-            ON CONFLICT (user_id) 
-            DO UPDATE SET friend_id_list = '[1]';
-        """)
+        # # --- 3. [新增] 設定 User 2 的好友列表包含 1 ---
+        # # 如果 user_id=2 已經在 new_friends 裡，就更新它的列表
+        # await conn.execute("""
+        #     INSERT INTO new_friends (user_id, friend_id_list)
+        #     VALUES (2, '[1]') 
+        #     ON CONFLICT (user_id) 
+        #     DO UPDATE SET friend_id_list = '[1]';
+        # """)
 
 
 @app.on_event("shutdown")
@@ -260,9 +260,9 @@ async def get_friends_status(ids: str = Query(..., description="好友 User ID �
         
         for row in rows:
             timer = None
-            if row["is_studying"] is True and row["user_id"] == 3:
-                # 假設 ID=3 的人正在專注且有計時器顯示
-                timer = "01:30:00"
+            # if row["is_studying"] is True and row["user_id"] == 3:
+            #     # 假設 ID=3 的人正在專注且有計時器顯示
+            #     timer = "01:30:00"
 
             results.append(FriendStatusResponse(
                 friend_id=row["user_id"],
