@@ -226,7 +226,7 @@ export default function MyRecordScreen() {
           </View>
 
           {/* 每日專注時長 */}
-          <ThemedText type="default" style={styles.sectionHeader}>每日專注時長</ThemedText>
+          <ThemedText type="default" style={[styles.sectionHeader, {marginTop: -30}]}>每日專注時長</ThemedText>
           <View>
             <BarChart
               data={weeklyReadingData}
@@ -351,7 +351,7 @@ export default function MyRecordScreen() {
 const styles = StyleSheet.create({
   // 統一樣式
   sectionHeader: {
-    marginTop: -20, 
+    marginTop: 10, 
     fontSize: 18, 
     color: PRIMARY_TEXT_COLOR,
     marginLeft: 20, 
@@ -359,7 +359,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   chartStyle: {
-    marginVertical: 20,
+    // marginVertical: 20,
+    marginTop: 10,
+    marginBottom: 20,
     borderRadius: 12,
     marginLeft: 30, 
   },
@@ -426,7 +428,7 @@ const styles = StyleSheet.create({
   badgeCount: { fontSize: 16, fontWeight: 'bold', color: PRIMARY_TEXT_COLOR },
 
   // Photo Grid
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 20 },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 20, width: 350 },
   emptyPhotoBox: { width: '100%', padding: 20, alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 8, marginTop: 10 },
 
   // Modal Common
