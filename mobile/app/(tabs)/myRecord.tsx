@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   badgeCount: { fontSize: 16, fontWeight: 'bold', color: PRIMARY_TEXT_COLOR },
 
   // Photo Grid
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 20, width: 350 },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 20, width: 350, marginTop: 10 },
   emptyPhotoBox: { width: '100%', padding: 20, alignItems: 'center', backgroundColor: '#f0f0f0', borderRadius: 8, marginTop: 10 },
 
   // Modal Common
