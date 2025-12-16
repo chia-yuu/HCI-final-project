@@ -206,12 +206,12 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: 'FocusMate 提醒 🐱',
-        body: '已經休息 1 分鐘了喔，該回來了！',
+        body: '已經休息 10 分鐘了喔，該回來了！',
         sound: true,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 7,       // 7秒
+        seconds: 5,       // 7秒
         repeats: false,
       },
     });
@@ -259,7 +259,7 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-                    seconds: 14, 
+                    seconds: 10, 
                     repeats: false,
                 },
               });
@@ -305,7 +305,7 @@ export const FocusProvider = ({ children }: { children: React.ReactNode }) => {
       if (data.badge_earned) msg += "\n🎉 恭喜獲得好寶寶徽章！";
       
       setTimeout(() => {
-         if (mode === 'pause') Alert.alert("休息開始 ☕", "已幫您設定通知，1 分鐘後會提醒您回來！");
+         if (mode === 'pause') Alert.alert("休息開始 ☕", "已幫您設定通知，10 分鐘後會提醒您回來！");
          else Alert.alert("專注結束", msg);
       }, 500);
     } catch (error: any) { Alert.alert("存檔失敗", "請檢查網路連線"); }

@@ -72,7 +72,7 @@ export default function MyRecordScreen() {
   const chartWidth = screenWidth - 40; 
   
   // [新增] 計算照片寬度 (一排三張，預留間距)
-  const imageSize = (screenWidth - 60) / 3;
+  const imageSize = (screenWidth - 90) / 3;
 
   const { userId } = useUser();
   const currentUserId = userId || 1; // 預設 User 1
